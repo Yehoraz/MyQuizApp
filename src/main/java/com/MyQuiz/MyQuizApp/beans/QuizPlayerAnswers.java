@@ -3,8 +3,11 @@ package com.MyQuiz.MyQuizApp.beans;
 import java.util.Map;
 
 import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.MapKeyColumn;
 import javax.persistence.OneToMany;
 
 import lombok.AllArgsConstructor;
@@ -18,7 +21,7 @@ import lombok.NoArgsConstructor;
 public class QuizPlayerAnswers {
 
 	@Id
-	private long player_id;
+	private long playerId;
 	
 	//generate by Server Side
 	private int score;
@@ -26,7 +29,9 @@ public class QuizPlayerAnswers {
 	//generate by Server Side
 	private long completionTime;
 	
-	@OneToMany(cascade=CascadeType.ALL)
+	@ElementCollection(targetClass = Long.class)
+	@MapKeyColumn
+	@Column
 	private Map<Long, Long> playerAnswers;
 	
 }

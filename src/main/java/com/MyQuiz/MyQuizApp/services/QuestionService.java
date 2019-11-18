@@ -46,7 +46,7 @@ public class QuestionService {
 		}
 	}
 	
-	public List<Question> getAllQuestions(){
+	public List<Question> getAllQuestions() throws EntityNotFoundException {
 		if(repository.count() > 0) {
 			return repository.findAll();
 		}else {

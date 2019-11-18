@@ -33,7 +33,7 @@ public class QuizService {
 		}
 	}
 
-	public void removeQuiz(Quiz quiz) throws InvalidInputException {
+	public void removeQuiz(Quiz quiz) throws InvalidInputException, EntityNotFoundException {
 		if (validateItemInfo(quiz)) {
 			if (repository.existsById(quiz.getId())) {
 				repository.delete(quiz);
@@ -46,7 +46,7 @@ public class QuizService {
 		}
 	}
 
-	public void updateQuiz(Quiz quiz) throws InvalidInputException {
+	public void updateQuiz(Quiz quiz) throws InvalidInputException, EntityNotFoundException {
 		if (validateItemInfo(quiz)) {
 			if (repository.existsById(quiz.getId())) {
 				repository.save(quiz);
@@ -60,10 +60,10 @@ public class QuizService {
 	}
 
 	public void updateQuizWinnerPlayer(long quiz_id, Player player, int currentPlayerScore)
-			throws InvalidInputException {
+			throws InvalidInputException, EntityNotFoundException {
 		if (validateItemInfo(player)) {
-			if (repository.existsById(quiz_id)) {
-				Quiz quiz = repository.getOne(quiz_id);
+			Quiz quiz = repository.findById(quiz_id).orElse(null);
+			if (quiz != null) {
 				if (quiz.getWinnerPlayerScore() < currentPlayerScore) {
 					quiz.setWinnerPlayer(player);
 					quiz.setWinnerPlayerScore(currentPlayerScore);
@@ -79,11 +79,7 @@ public class QuizService {
 	}
 
 	public Quiz getQuizById(long quiz_id) throws EntityNotFoundException {
-		if (repository.existsById(quiz_id)) {
-			return repository.getOne(quiz_id);
-		} else {
-			throw new EntityNotFoundException("Quiz with id: " + quiz_id + " does not exists");
-		}
+		return repository.findById(quiz_id).orElse(null);
 	}
 
 	public List<Quiz> getAllQuizs() {
@@ -108,7 +104,7 @@ public class QuizService {
 			if (tempQuiz.getPlayers() == null || tempQuiz.getPlayers().size() < 0 || tempQuiz.getQuestions() == null
 					|| tempQuiz.getQuestions().size() < 1 || tempQuiz.getQuizEndDate() != null
 					|| tempQuiz.getQuizStartDate() != null || tempQuiz.getWinnerPlayer() != null
-					|| tempQuiz.getWinnerPlayerScore() > 0 || tempQuiz.getQuizManager() == null
+					|| tempQuiz.getWinnerPlayerScore() > 0 || tempQuiz.getQuizManagerId() == 0
 					|| tempQuiz.getQuizMaxTimeInMillis() < (1000 * 10) || tempQuiz.getQuizName().length() < 2
 					|| tempQuiz.getQuizPlayerAnswers() != null) {
 				return false;

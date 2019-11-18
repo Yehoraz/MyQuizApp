@@ -64,11 +64,7 @@ public class PlayerService {
 	}
 
 	public Player getPlayerById(long player_id) {
-		if (repository.existsById(player_id)) {
-			return repository.getOne(player_id);
-		} else {
-			throw new EntityNotFoundException("Player with id: " + player_id + " does not exists");
-		}
+			return repository.findById(player_id).orElse(null);
 	}
 
 	public List<Player> getAllPlayers() {

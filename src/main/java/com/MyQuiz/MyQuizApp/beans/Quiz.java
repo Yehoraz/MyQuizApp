@@ -28,8 +28,9 @@ public class Quiz {
 	@Column
 	private String quizName;
 	
-	@OneToOne
-	private QuizManager quizManager;
+	private long quizManagerId;
+//	@OneToOne
+//	private QuizManager quizManager;
 	
 	@Enumerated
 	private QuizType quizType;
@@ -58,12 +59,13 @@ public class Quiz {
 	@OneToMany(cascade=CascadeType.ALL)
 	private List<Question> questions;
 	
-	@OneToMany
+	@OneToMany(cascade=CascadeType.ALL)
 	private List<Player> players;
 	
 	@OneToMany(cascade=CascadeType.ALL)
 	private List<QuizPlayerAnswers> quizPlayerAnswers;
 	
+	// should be in mongoDB
 //	//represent the quiz completion time, key is the player_id and the value is the completion time in millies.
 //	@OneToMany
 //	private HashMap<Long, Long> playersTimeToCompleteInMillies;

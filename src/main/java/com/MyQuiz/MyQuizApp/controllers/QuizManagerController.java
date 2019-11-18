@@ -1,12 +1,9 @@
 package com.MyQuiz.MyQuizApp.controllers;
 
 import java.sql.Date;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.persistence.EntityNotFoundException;
 
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +60,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			if (quiz.getQuizStartDate() == null) {
 				quiz.setQuizStartDate(new Date(startTime));
 				try {
@@ -90,10 +87,11 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizStartDate().getTime() < endTime) {
-			if (quiz.getQuizManager().getId() == quizManagerId) {
-				// exception, request content was messed up
-				if (quiz.getQuizEndDate() == null) {
+		if(quiz != null) {
+		if (quiz.getQuizEndDate() != null) {
+			if (quiz.getQuizManagerId() == quizManagerId) {
+				if (quiz.getQuizStartDate().getTime() < endTime) {
+					// exception, request content was messed up
 					quiz.setQuizEndDate(new Date(endTime));
 					try {
 						quizService.updateQuiz(quiz);
@@ -103,14 +101,18 @@ public class QuizManagerController {
 						return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz info is Invalid");
 					}
 					return ResponseEntity.status(HttpStatus.OK).body("Quiz stoped");
+
 				} else {
-					return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz already stoped");
+					return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request data is invalid");
 				}
 			} else {
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You are not the Quiz manager");
 			}
+		} else {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz already stoped");
+		}
 		}else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request data is invalid");
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
 	}
 
@@ -121,7 +123,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			if (quiz.getQuizEndDate() != null
 					&& ((System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) > (1000 * 60 * 5))) {
 				return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
@@ -142,7 +144,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			quiz.getPlayers().add(player);
 			try {
 				quizService.updateQuiz(quiz);
@@ -165,7 +167,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			if (quiz.getQuizStartDate() == null) {
 				try {
 					question = questionService.getQuestionById(question_id);
@@ -210,7 +212,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			if (quiz.getQuizStartDate() == null) {
 				try {
 					question = questionService.getQuestionById(question_id);
@@ -246,7 +248,7 @@ public class QuizManagerController {
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			try {
 				question = questionService.getQuestionById(question_id);
 			} catch (EntityNotFoundException e) {
@@ -278,7 +280,7 @@ public class QuizManagerController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
 		}
 		QuizId quizId = new QuizId(quiz.getId());
-		if (quiz.getQuizManager().getId() == quizManagerId) {
+		if (quiz.getQuizManagerId() == quizManagerId) {
 			// need to remove quiz manager role here!!! need to fix!
 			try {
 				quizService.removeQuiz(quiz);
