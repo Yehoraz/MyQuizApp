@@ -39,11 +39,7 @@ public class QuestionService {
 	}
 	
 	public Question getQuestionById(long question_id) {
-		if(repository.existsById(question_id)) {
-			return repository.getOne(question_id);
-		}else {
-			throw new EntityNotFoundException("Question with id: " + question_id + " does not exists");
-		}
+			return repository.findById(question_id).orElse(null);
 	}
 	
 	public List<Question> getAllQuestions() throws EntityNotFoundException {

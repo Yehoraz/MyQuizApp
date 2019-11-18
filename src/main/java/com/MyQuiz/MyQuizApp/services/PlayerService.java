@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
-//import com.MyQuiz.MyQuizApp.beans.PlayerId;
-//import com.MyQuiz.MyQuizApp.repos.PlayerIdRepository;
 import com.MyQuiz.MyQuizApp.repos.PlayerRepository;
 
 @Service
@@ -20,11 +18,7 @@ public class PlayerService {
 	@Autowired
 	private PlayerRepository repository;
 
-	// this was added for the createplayerid method!!!!!
-//	@Autowired
-//	private PlayerIdRepository playerIdRepository;
-
-	public void addPlayer(Player player) throws InvalidInputException {
+	public void addPlayer(Player player) throws InvalidInputException, EntityExistsException {
 		if (validateItemInfo(player)) {
 			if (!repository.existsById(player.getId())) {
 				repository.save(player);
@@ -74,26 +68,12 @@ public class PlayerService {
 			throw new EntityNotFoundException("Player database is empty");
 		}
 	}
-
-	// this method was made for anonymous players, probably should use it after
-	// production and upgrades!!
-//	private long createPlayerId() {
-//		long playerId;
-//		
-//		do {
-//			playerId = (long) Math.abs(Math.random() * 1000000000000000000l);
-//		} while (playerIdRepository.getOne(playerId) != null);
-//		
-//		PlayerId temPlayerId = new PlayerId(playerId);
-//		playerIdRepository.save(temPlayerId);
-//		return playerId;
-//	}
-
+	
 	private boolean validateItemInfo(Object obj) {
 		if (obj instanceof Player) {
 			Player tempPlayer = (Player) obj;
-			if (tempPlayer.getId() < 1 || tempPlayer.getAge() < 1 || tempPlayer.getFirstName().length() < 2
-					|| tempPlayer.getLastName().length() < 2) {
+			if (tempPlayer.getId() < 1 || tempPlayer.getAge() < 0 || tempPlayer.getFirstName().length() < 1
+					|| tempPlayer.getLastName().length() < 1) {
 				return false;
 			}
 			return true;
@@ -101,4 +81,5 @@ public class PlayerService {
 			return false;
 		}
 	}
+	
 }

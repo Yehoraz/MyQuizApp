@@ -7,7 +7,6 @@ import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 
 import org.hibernate.Hibernate;
-import org.hibernate.annotations.Check;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +35,6 @@ import com.MyQuiz.MyQuizApp.threads.QuizCopyThread;
 @RestController
 public class PlayerController {
 
-	// need to make validation methods!!!!!!!
-
 	@Autowired
 	private QuizService quizService;
 
@@ -58,16 +55,12 @@ public class PlayerController {
 
 	private Quiz quiz = null;
 	private Player player = null;
-	Thread quizCopyThread = null;
-
-	@GetMapping("/check")
-	public ResponseEntity<?> Check() {
-		return ResponseEntity.status(HttpStatus.ACCEPTED).body("hello");
-	}
+	private Thread quizCopyThread = null;
+	
+	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10 ;
 
 	@PostMapping("/createQuiz")
 	public ResponseEntity<?> createQuiz(@RequestBody Quiz quiz) {
-		// add role quiz manager to this player need to fix it!!!!
 		quiz.setId(createQuizId());
 		if (quiz.getId() > 0) {
 			try {
@@ -85,7 +78,8 @@ public class PlayerController {
 		}
 	}
 
-	// urgent!!! need to check if everthing works good!!! test for exceptions!!!
+	// urgent!!! need to check if everything (stream and lambda) works good!!! test
+	// for exceptions!!!
 	@PostMapping("/answer/{quizId}")
 	public ResponseEntity<?> answerQuiz(@PathVariable long quizId, @RequestBody QuizPlayerAnswers playerAnswers) {
 		int score = 0;
@@ -96,7 +90,7 @@ public class PlayerController {
 				playerAnswers.setCompletionTime(playerAnswers.getCompletionTime() - quiz.getQuizStartDate().getTime());
 				if (quiz.getPlayers().contains(player)) {
 					if (quiz.getQuizEndDate() == null
-							|| (System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) < (1000 * 60 * 5)) {
+							|| (System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) < MAX_TIME_PAST_QUIZ_END) {
 						if (quiz.getQuizPlayerAnswers().stream()
 								.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() > 0) {
 							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player already answered");
@@ -255,22 +249,41 @@ public class PlayerController {
 			return ResponseEntity.status(HttpStatus.OK).body(randomQuestions);
 		}
 	}
-	
+
 	@PostMapping("/addPlayer")
+	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
+		try {
+			playerService.addPlayer(player);
+			return ResponseEntity.status(HttpStatus.OK).body(null);
+		} catch (InvalidInputException e) {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
+		} catch (EntityExistsException e) {
+			return ResponseEntity.status(HttpStatus.CREATED).body(null);
+		}
+	}
+
+	@GetMapping("/getWinner/{quizId}")
+	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
+		quiz = quizService.getQuizById(quizId);
+		if (quiz != null) {
+			if (quiz.getQuizEndDate() != null
+					&& ((System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) > MAX_TIME_PAST_QUIZ_END)) {
+				return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
+						+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
+			} else {
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz not finished yet");
+			}
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+		}
+	}
 
 	private long createQuizId() {
 		long quizId;
 		do {
 			quizId = (long) Math.abs((Math.random() * 1000000000000000000l));
-		} while (quizIdService.ifExistsById(quizId) && quizId <= 100000000000000000l);
-
-		QuizId tempQuizId = new QuizId(quizId);
-		try {
-			quizIdService.addQuizId(tempQuizId);
-			return quizId;
-		} catch (EntityExistsException e) {
-			return 0;
-		}
+		} while (quizService.ifExistsById(quizId));
+		return quizId;
 	}
 
 }

@@ -97,6 +97,10 @@ public class QuizService {
 			throw new EntityNotFoundException("Quiz database is empty");
 		}
 	}
+	
+	public boolean ifExistsById(long quizId) {
+		return repository.existsById(quizId);
+	}
 
 	private boolean validateItemInfo(Object obj) {
 		if (obj instanceof Quiz) {
