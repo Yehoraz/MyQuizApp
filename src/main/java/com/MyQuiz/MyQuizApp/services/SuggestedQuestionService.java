@@ -1,14 +1,12 @@
 package com.MyQuiz.MyQuizApp.services;
 
-import java.util.List;
-
+import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
-import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
 import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
 
 @Service
@@ -17,53 +15,24 @@ public class SuggestedQuestionService {
 	@Autowired
 	private SuggestedQuestionRepository repository;
 
-	public void addSuggestedQuestion(SuggestedQuestion suggestedQuestion) {
-		repository.save(suggestedQuestion);
-	}
-
-	public void removeSuggestedQuestion(SuggestedQuestion suggestedQuestion) {
-		if (repository.existsById(suggestedQuestion.getId())) {
-			repository.delete(suggestedQuestion);
+	public void addSuggestedQuestion(SuggestedQuestion suggestedQuestion) throws EntityExistsException {
+		if (repository.findByQuestion(suggestedQuestion.getQuestion())) {
+			repository.save(suggestedQuestion);
 		} else {
-			throw new EntityNotFoundException();
+			throw new EntityExistsException();
 		}
 	}
 
 	public void updateSuggestedQuestion(SuggestedQuestion suggestedQuestion) {
 		if (repository.existsById(suggestedQuestion.getId())) {
-			// validation check
 			repository.save(suggestedQuestion);
 		} else {
 			throw new EntityNotFoundException();
 		}
 	}
 
-	public SuggestedQuestion getSuggestedQuestion(long question_id) {
-		if (repository.existsById(question_id)) {
-			return repository.getOne(question_id);
-		} else {
-			throw new EntityNotFoundException();
-		}
-	}
-
-	public List<SuggestedQuestion> getAllSuggestedQuestions() {
-		if (repository.count() > 0) {
-			return repository.findAll();
-		} else {
-			throw new EntityNotFoundException();
-		}
-	}
-
-	public void removeAllSuggestedQuestions() {
-		if (repository.count() > 0) {
-			repository.deleteAll();
-		} else {
-			throw new EntityNotFoundException();
-		}
-	}
-
-	private boolean validationCheck(Object obj) {
-		return true;
+	public SuggestedQuestion getSuggestedQuestion(long sQuestionId) {
+		return repository.findById(sQuestionId).orElse(null);
 	}
 
 }

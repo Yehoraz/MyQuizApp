@@ -23,6 +23,6 @@ public class Answer {
 	private String answerText;
 	
 	@Column
-	private boolean ifCorrectAnswer;
+	private boolean isCorrectAnswer;
 	
 }

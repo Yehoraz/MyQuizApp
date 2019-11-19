@@ -18,7 +18,6 @@ import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
 import com.MyQuiz.MyQuizApp.beans.QuizCopy;
-import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
 import com.MyQuiz.MyQuizApp.services.AnswerService;
 import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuestionService;
@@ -65,8 +64,6 @@ public class QuizManagerController {
 						quizService.updateQuiz(quiz);
 					} catch (EntityNotFoundException e) {
 						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-					} catch (InvalidInputException e) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 					}
 					return ResponseEntity.status(HttpStatus.OK).body("Quiz started");
 				} else {
@@ -91,10 +88,10 @@ public class QuizManagerController {
 						quiz.setQuizEndDate(new Date(endTime));
 						try {
 							quizService.updateQuiz(quiz);
+							QuizCopy quizCopy = quizCopyService.getQuizCopy(quiz.getId());
+							quizCopyService.removeQuizCopy(quizCopy);
 						} catch (EntityNotFoundException e) {
 							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-						} catch (InvalidInputException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 						}
 						return ResponseEntity.status(HttpStatus.OK).body("Quiz stoped");
 					} else {
@@ -124,8 +121,6 @@ public class QuizManagerController {
 						quizService.updateQuiz(quiz);
 					} catch (EntityNotFoundException e) {
 						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-					} catch (InvalidInputException e) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 					}
 					return ResponseEntity.status(HttpStatus.OK).body("Player added");
 				} else {
@@ -168,8 +163,6 @@ public class QuizManagerController {
 								quizCopyService.updateQuizCopy(quizCopy);
 							} catch (EntityNotFoundException e) {
 								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-							} catch (InvalidInputException e1) {
-								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 							}
 							return ResponseEntity.status(HttpStatus.OK).body("Answer updated");
 						} else {
@@ -207,8 +200,6 @@ public class QuizManagerController {
 							quizCopyService.updateQuizCopy(quizCopy);
 						} catch (EntityNotFoundException e) {
 							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-						} catch (InvalidInputException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 						}
 						return ResponseEntity.status(HttpStatus.OK).body("Question updated");
 					} else {
@@ -241,8 +232,6 @@ public class QuizManagerController {
 							quizCopyService.updateQuizCopy(quizCopy);
 						} catch (EntityNotFoundException e) {
 							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-						} catch (InvalidInputException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 						}
 						return ResponseEntity.status(HttpStatus.OK).body("Question removed");
 					} else {
@@ -263,17 +252,15 @@ public class QuizManagerController {
 	public ResponseEntity<?> removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
-			quizCopy = quizCopyService.getQuizCopy(quizId);
 			if (quiz.getQuizManagerId() == quizManagerId) {
 				try {
 					quizService.removeQuiz(quiz);
+					quizCopy = quizCopyService.getQuizCopy(quizId);
 					quizCopyService.removeQuizCopy(quizCopy);
+					return ResponseEntity.status(HttpStatus.OK).body("Quiz removed");
 				} catch (EntityNotFoundException e) {
 					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-				} catch (InvalidInputException e) {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 				}
-				return ResponseEntity.status(HttpStatus.OK).body("Quiz removed");
 			} else {
 				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
 			}

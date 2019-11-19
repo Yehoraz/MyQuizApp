@@ -11,6 +11,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
+//should be stored in mongoDB with players stats!
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -29,6 +29,9 @@ public class Question {
 	@Column
 	private long correctAnswerId;
 	
+	@Column
+	private boolean isApproved;
+	
 	@OneToMany(cascade=CascadeType.ALL)
 	private List<Answer> answers;
 	

@@ -17,9 +17,12 @@ public class QuestionService {
 	@Autowired
 	private QuestionRepository repository;
 	
-	public void addQuestion(Question question) {
-		//validation check here!!!!
-		repository.save(question);
+	public void addQuestion(Question question) throws EntityExistsException {
+		if(!repository.findByQuestionText(question.getQuestionText())) {
+			repository.save(question);
+		}else {
+			throw new EntityExistsException();
+		}
 	}
 	
 	public void removeQuestion(Question question) {
@@ -38,15 +41,15 @@ public class QuestionService {
 		}
 	}
 	
-	public Question getQuestionById(long question_id) {
-			return repository.findById(question_id).orElse(null);
+	public Question getQuestionById(long questionId) {
+			return repository.findById(questionId).orElse(null);
 	}
 	
 	public List<Question> getAllQuestions() throws EntityNotFoundException {
 		if(repository.count() > 0) {
 			return repository.findAll();
 		}else {
-			throw new EntityNotFoundException("Question database is empty");
+			return null;
 		}
 	}
 	

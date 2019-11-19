@@ -17,20 +17,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
-import com.MyQuiz.MyQuizApp.beans.QuizId;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
-import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
 import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuestionService;
 import com.MyQuiz.MyQuizApp.services.QuizCopyService;
-import com.MyQuiz.MyQuizApp.services.QuizIdService;
 import com.MyQuiz.MyQuizApp.services.QuizService;
 import com.MyQuiz.MyQuizApp.services.SuggestedQuestionService;
 import com.MyQuiz.MyQuizApp.threads.QuizCopyThread;
+import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 
 @RestController
 public class PlayerController {
@@ -40,9 +39,6 @@ public class PlayerController {
 
 	@Autowired
 	private QuizCopyService quizCopyService;
-
-	@Autowired
-	private QuizIdService quizIdService;
 
 	@Autowired
 	private PlayerService playerService;
@@ -56,25 +52,42 @@ public class PlayerController {
 	private Quiz quiz = null;
 	private Player player = null;
 	private Thread quizCopyThread = null;
-	
-	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10 ;
+
+	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
 	@PostMapping("/createQuiz")
 	public ResponseEntity<?> createQuiz(@RequestBody Quiz quiz) {
 		quiz.setId(createQuizId());
-		if (quiz.getId() > 0) {
+		if (ValidationUtil.validationCheck(quiz)) {
 			try {
 				quizService.addQuiz(quiz);
 			} catch (EntityExistsException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz already exists");
-			} catch (InvalidInputException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
+				return ResponseEntity.status(HttpStatus.ACCEPTED)
+						.body("Server Error please try again later or contact us");
 			}
-			quizCopyThread = new Thread(new QuizCopyThread(quiz, quizCopyService));
-			quizCopyThread.start();
-			return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
+			long id = quiz.getId();
+			quiz = null;
+			quiz = quizService.getQuizById(id);
+			if (quiz != null) {
+				//need to check this lambda!!!!
+				quiz.getQuestions().forEach(q-> q.getAnswers().forEach(a-> {if(a.isCorrectAnswer()) {q.setCorrectAnswerId(a.getId());}}));
+				//if lambda work should delete this for loop!!
+				for(Question q: quiz.getQuestions()) {
+					for(Answer a: q.getAnswers()) {
+						if(a.isCorrectAnswer()) {
+							q.setCorrectAnswerId(a.getId());
+							break;
+						}
+					}
+				}
+				quizCopyThread = new Thread(new QuizCopyThread(quiz, quizCopyService));
+				quizCopyThread.start();
+				return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
+			}else {
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server error please try again later or contact us");
+			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server had a problem please try again");
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
 	}
 
@@ -85,55 +98,47 @@ public class PlayerController {
 		int score = 0;
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
-			player = playerService.getPlayerById(playerAnswers.getPlayerId());
-			if (player != null) {
-				playerAnswers.setCompletionTime(playerAnswers.getCompletionTime() - quiz.getQuizStartDate().getTime());
-				if (quiz.getPlayers().contains(player)) {
-					if (quiz.getQuizEndDate() == null
-							|| (System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) < MAX_TIME_PAST_QUIZ_END) {
-						if (quiz.getQuizPlayerAnswers().stream()
-								.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() > 0) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player already answered");
-						}
-//						for (QuizPlayerAnswers qpa : quiz.getQuizPlayerAnswers()) {
-//							if (qpa.getPlayerId() == playerAnswers.getPlayerId()) {
-//							}
-//						}
-						score = (int) quiz.getQuestions().stream()
-								.filter(q -> q.getCorrectAnswerId() == playerAnswers.getPlayerAnswers().get(q.getId()))
-								.count();
-						System.out.println("the score is: " + score);
-//						for (Question q : quiz.getQuestions()) {
-//							if (q.getCorrectAnswerId() == playerAnswers.getPlayerAnswers().get(q.getId())) {
-//								System.out
-//										.println("question id: " + q.getId() + " the answer is correct and its id is: "
-//												+ playerAnswers.getPlayerAnswers().get(q.getId()));
-//								score++;
-//							}
-//						}
-
-						playerAnswers.setScore(score);
-						quiz.getQuizPlayerAnswers().add(playerAnswers);
-						try {
-							if (quiz.getWinnerPlayerScore() < score) {
-								quiz.setWinnerPlayer(player);
-								quiz.setWinnerPlayerScore(score);
+			if (ValidationUtil.validationCheck(playerAnswers)) {
+				player = playerService.getPlayerById(playerAnswers.getPlayerId());
+				if (player != null) {
+					playerAnswers
+							.setCompletionTime(playerAnswers.getCompletionTime() - quiz.getQuizStartDate().getTime());
+					if (quiz.getPlayers().contains(player)) {
+						if (quiz.getQuizEndDate() == null || (System.currentTimeMillis()
+								- quiz.getQuizEndDate().getTime()) < MAX_TIME_PAST_QUIZ_END) {
+							if (quiz.getQuizPlayerAnswers().stream()
+									.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() > 0) {
+								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player already answered");
+							} else {
+								score = (int) quiz.getQuestions().stream().filter(
+										q -> q.getCorrectAnswerId() == playerAnswers.getPlayerAnswers().get(q.getId()))
+										.count();
+								System.out.println("the score is: " + score);
+								playerAnswers.setScore(score);
+								quiz.getQuizPlayerAnswers().add(playerAnswers);
+								try {
+									if (quiz.getWinnerPlayerScore() < score) {
+										quiz.setWinnerPlayer(player);
+										quiz.setWinnerPlayerScore(score);
+									}
+									quizService.updateQuiz(quiz);
+								} catch (EntityNotFoundException e) {
+									return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+								}
+								return ResponseEntity.status(HttpStatus.OK).body("Thanks your score is: " + score);
 							}
-							quizService.updateQuiz(quiz);
-						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-						} catch (InvalidInputException e1) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz or Player info is Invalid");
+						} else {
+							return ResponseEntity.status(HttpStatus.ACCEPTED)
+									.body("Time to answer the Quiz has passed");
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("Thanks your score is: " + score);
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Time to answer the Quiz has passed");
+						return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
+					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
@@ -153,8 +158,6 @@ public class PlayerController {
 							quizService.updateQuiz(quiz);
 						} catch (EntityNotFoundException e) {
 							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-						} catch (InvalidInputException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 						}
 						return ResponseEntity.status(HttpStatus.OK).body("Joined the Quiz");
 					} else {
@@ -183,8 +186,6 @@ public class PlayerController {
 						quizService.updateQuiz(quiz);
 					} catch (EntityNotFoundException e) {
 						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-					} catch (InvalidInputException e1) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz info is Invalid");
 					}
 					return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz");
 				} else {
@@ -198,27 +199,39 @@ public class PlayerController {
 		}
 	}
 
-	@PutMapping("/updatePlayerInfo")
-	public ResponseEntity<?> updatePlayerInfo(@RequestBody Player newPlayerInfo) {
-		player = playerService.getPlayerById(newPlayerInfo.getId());
-		if (player != null) {
+	@PostMapping("/suggestQuestion/{playerId}")
+	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
+		if (ValidationUtil.validationCheck(question)) {
 			try {
-				playerService.updatePlayer(newPlayerInfo);
-			} catch (EntityNotFoundException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
-			} catch (InvalidInputException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player info is Invalid");
+				suggestedQuestionService.addSuggestedQuestion(new SuggestedQuestion(0, playerId, question));
+			} catch (EntityExistsException e) {
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question already suggested");
 			}
-			return ResponseEntity.status(HttpStatus.OK).body("Player updated");
+			return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
 	}
 
-	@PostMapping("/suggestQuestion/{playerId}")
-	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
-		suggestedQuestionService.addSuggestedQuestion(new SuggestedQuestion(0, playerId, question));
-		return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
+	@PutMapping("/updateSuggestedQuestion/{sqID}/{playerId}")
+	public ResponseEntity<?> updateSuggestedQuestion(@PathVariable("sqID") long sQuestionId,
+			@PathVariable long playerId) {
+		SuggestedQuestion sQuestion = suggestedQuestionService.getSuggestedQuestion(sQuestionId);
+		if (sQuestion != null) {
+			if (sQuestion.getPlayerId() == playerId) {
+				if (ValidationUtil.validationCheck(sQuestion)) {
+					suggestedQuestionService.updateSuggestedQuestion(sQuestion);
+					return ResponseEntity.status(HttpStatus.OK).body("Suggested Question updated");
+				} else {
+					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+				}
+			} else {
+				return ResponseEntity.status(HttpStatus.ACCEPTED)
+						.body("Only the player who suggested the question can update it");
+			}
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Suggested question does not exists");
+		}
 	}
 
 	@GetMapping("/getAllQuestions")
@@ -247,34 +260,6 @@ public class PlayerController {
 				randomQuestions.add(questions.get(Math.max(1, ((int) Math.random() * questions.size()))));
 			}
 			return ResponseEntity.status(HttpStatus.OK).body(randomQuestions);
-		}
-	}
-
-	@PostMapping("/addPlayer")
-	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
-		try {
-			playerService.addPlayer(player);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
-		} catch (InvalidInputException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
-		} catch (EntityExistsException e) {
-			return ResponseEntity.status(HttpStatus.CREATED).body(null);
-		}
-	}
-
-	@GetMapping("/getWinner/{quizId}")
-	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
-		quiz = quizService.getQuizById(quizId);
-		if (quiz != null) {
-			if (quiz.getQuizEndDate() != null
-					&& ((System.currentTimeMillis() - quiz.getQuizEndDate().getTime()) > MAX_TIME_PAST_QUIZ_END)) {
-				return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
-						+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
-			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz not finished yet");
-			}
-		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 		}
 	}
 

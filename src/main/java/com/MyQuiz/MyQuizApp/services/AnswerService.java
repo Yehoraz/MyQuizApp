@@ -14,51 +14,47 @@ import com.MyQuiz.MyQuizApp.repos.AnswerRepository;
 @Service
 public class AnswerService {
 
-	
-	//need to make exceptions for everything and add the logic!!!!
-	
 	@Autowired
 	private AnswerRepository repository;
-	
-	public void addAnswer(Answer answer) {
-		if(!repository.existsById(answer.getId())) {
+
+	public void addAnswer(Answer answer) throws EntityExistsException {
+		if (!repository.existsById(answer.getId())) {
 			repository.save(answer);
-		}else {
+		} else {
 			throw new EntityExistsException("Answer with id: " + answer.getId() + " already exists");
 		}
 	}
-	
-	public void removeAnswer(Answer answer) {
-		if(repository.existsById(answer.getId())) {
+
+	public void removeAnswer(Answer answer) throws EntityNotFoundException {
+		if (repository.existsById(answer.getId())) {
 			repository.delete(answer);
-		}else {
+		} else {
 			throw new EntityNotFoundException("Answer with id: " + answer.getId() + " does not exists");
 		}
 	}
-	
-	public void updateAnswer(Answer answer) {
-		if(repository.existsById(answer.getId())) {
+
+	public void updateAnswer(Answer answer) throws EntityNotFoundException {
+		if (repository.existsById(answer.getId())) {
 			repository.save(answer);
-		}else {
+		} else {
 			throw new EntityNotFoundException("Answer with id: " + answer.getId() + " does not exists");
 		}
 	}
-	
-	public Answer getAnswerById(long answer_id) {
-		if(repository.existsById(answer_id)) {
+
+	public Answer getAnswerById(long answer_id) throws EntityNotFoundException {
+		if (repository.existsById(answer_id)) {
 			return repository.getOne(answer_id);
-		}else {
+		} else {
 			throw new EntityNotFoundException("Answer with id: " + answer_id + " does not exists");
 		}
 	}
-	
-	public List<Answer> getAllAnswers(){
-		if(repository.count() > 0) {
+
+	public List<Answer> getAllAnswers() throws EntityNotFoundException {
+		if (repository.count() > 0) {
 			return repository.findAll();
-		}else {
+		} else {
 			throw new EntityNotFoundException("Answer database is empty");
 		}
 	}
-	
-	
+
 }
