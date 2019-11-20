@@ -38,7 +38,6 @@ public class ValidationUtil {
 				Question question = (Question) obj;
 				if (question.getCorrectAnswerId() < 0 || question.getId() < 0 || question.getQuestionText().length() < 1
 						|| question.getAnswers() == null) {
-					System.out.println("3");
 					return false;
 				} else {
 					if (question.getAnswers().stream().filter(a -> (!validationCheck(a))).count() > 0) {

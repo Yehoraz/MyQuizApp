@@ -268,5 +268,8 @@ public class QuizManagerController {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 		}
 	}
+	
+	// missing method!!!
+	//get all quiz questions so the manager could update, remove and add questions!!
 
 }
