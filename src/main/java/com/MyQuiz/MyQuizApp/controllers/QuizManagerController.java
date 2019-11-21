@@ -1,13 +1,16 @@
 package com.MyQuiz.MyQuizApp.controllers;
 
 import java.sql.Date;
+import java.util.List;
 
 import javax.persistence.EntityNotFoundException;
 
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,6 +26,7 @@ import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuestionService;
 import com.MyQuiz.MyQuizApp.services.QuizCopyService;
 import com.MyQuiz.MyQuizApp.services.QuizService;
+import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 
 @RestController
 public class QuizManagerController {
@@ -53,8 +57,8 @@ public class QuizManagerController {
 	private Answer answer = null;
 
 	@PutMapping("/startQuiz/{quizId}/{startTime}/{quizManagerId}")
-	public ResponseEntity<?> startQuiz(@PathVariable long quizId, @PathVariable long startTime,
-			@PathVariable long quizManagerId) {
+	public void startQuiz(@PathVariable long quizId, @PathVariable long startTime, @PathVariable long quizManagerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -63,23 +67,23 @@ public class QuizManagerController {
 					try {
 						quizService.updateQuiz(quiz);
 					} catch (EntityNotFoundException e) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+						// logger
 					}
-					return ResponseEntity.status(HttpStatus.OK).body("Quiz started");
+					// logger
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz already started");
+					// logger
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			// logger
 		}
 	}
 
 	@PutMapping("/stopQuiz/{quizId}/{endTime}/{quizManagerId}")
-	public ResponseEntity<?> stopQuiz(@PathVariable long quizId, @PathVariable long endTime,
-			@PathVariable long quizManagerId) {
+	public void stopQuiz(@PathVariable long quizId, @PathVariable long endTime, @PathVariable long quizManagerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizEndDate() != null) {
@@ -91,26 +95,27 @@ public class QuizManagerController {
 							QuizCopy quizCopy = quizCopyService.getQuizCopy(quiz.getId());
 							quizCopyService.removeQuizCopy(quizCopy);
 						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+							// logger
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("Quiz stoped");
+						// logger
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Request data is invalid");
+						// logger
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+					// logger
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz already stoped");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Quiz does not exists");
+			// logger
 		}
 	}
 
 	@PostMapping("/addPlayerToQuiz/{quizId}/{playerId}/{quizManagerId}")
 	public ResponseEntity<?> addPlayerToPrivateQuiz(@PathVariable long quizId, @PathVariable long playerId,
 			@PathVariable long quizManagerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -134,9 +139,10 @@ public class QuizManagerController {
 		}
 	}
 
-	@PutMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
+	@PostMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
 	public ResponseEntity<?> updateAnswer(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable int answerId, @PathVariable long quizManagerId, @RequestBody String answerText) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -182,9 +188,10 @@ public class QuizManagerController {
 		}
 	}
 
-	@PutMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
+	@PostMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
 	public ResponseEntity<?> updateQuestion(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable long quizManagerId, @RequestBody String questionText) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -217,8 +224,9 @@ public class QuizManagerController {
 	}
 
 	@DeleteMapping("/removeQuestion/{quizId}/{questionId}/{quizManagerId}")
-	public ResponseEntity<?> removeQuestion(@PathVariable long quizId, @PathVariable int questionId,
+	public void removeQuestion(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable long quizManagerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -228,28 +236,32 @@ public class QuizManagerController {
 						try {
 							quizService.updateQuiz(quiz);
 							quizCopy = quizCopyService.getQuizCopy(quizId);
+							// need to check if it finds the Question object in the quizcopy because the
+							// answers are not the same for quiz Question object and quizcopy Question
+							// object
 							quizCopy.getQuestions().remove(question);
 							quizCopyService.updateQuizCopy(quizCopy);
 						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+							// logger
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("Question removed");
+						// logger
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not contain this Question");
+						// logger
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question does not exists");
+					// logger
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			// logger
 		}
 	}
 
 	@DeleteMapping("/removeQuiz/{quizId}/{quizManagerId}")
-	public ResponseEntity<?> removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
+	public void removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
@@ -257,19 +269,78 @@ public class QuizManagerController {
 					quizService.removeQuiz(quiz);
 					quizCopy = quizCopyService.getQuizCopy(quizId);
 					quizCopyService.removeQuizCopy(quizCopy);
-					return ResponseEntity.status(HttpStatus.OK).body("Quiz removed");
 				} catch (EntityNotFoundException e) {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+					// logger
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			// logger
 		}
 	}
-	
+
+	@GetMapping("/getOnGoingQuiz/{quizManagerId}")
+	public ResponseEntity<?> getOnGoingQuiz(@PathVariable long quizManagerId) {
+		restartVariables();
+		quiz = quizService.getQuizStartByManagerId(quizManagerId);
+		if (quiz != null) {
+			return ResponseEntity.status(HttpStatus.OK).body(quiz);
+		} else {
+			return ResponseEntity.status(HttpStatus.OK).body("You do not manage any on going quiz");
+		}
+	}
+
+	@GetMapping("/getQuizForEdit/{quizManagerId}")
+	public ResponseEntity<?> getQuizForEdit(@PathVariable long quizManagerId) {
+		restartVariables();
+		quiz = quizService.getQuizOpenByManagerId(quizManagerId);
+		if (quiz != null) {
+			return ResponseEntity.status(HttpStatus.OK).body(quiz);
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED)
+					.body("You do not manage any open quiz or quiz has started");
+		}
+	}
+
+	@GetMapping("/getAllPrevQuizs/{quizManagerId}")
+	public ResponseEntity<?> getAllPrevQuizs(@PathVariable long quizManagerId) {
+		List<Quiz> quizs = quizService.getAllPrevQuizs(quizManagerId);
+		if (quizs != null) {
+			return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("You have never managed any quiz");
+		}
+	}
+
+	@PostMapping("/addQuestionToQuiz/{quizManagerId}")
+	public ResponseEntity<?> addQuestionToQuiz(@PathVariable long quizManagerId, @RequestBody Question question) {
+		restartVariables();
+		if (ValidationUtil.validationCheck(question)) {
+			question.setApproved(false);
+			quiz = quizService.getQuizOpenByManagerId(quizManagerId);
+			if (quiz != null) {
+				quiz.getQuestions().add(question);
+				quizService.updateQuiz(quiz);
+				return ResponseEntity.status(HttpStatus.OK).body("Question added");
+			} else {
+				return ResponseEntity.status(HttpStatus.ACCEPTED)
+						.body("You do not manage any open quiz or quiz has started");
+			}
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+		}
+	}
+
 	// missing method!!!
-	//get all quiz questions so the manager could update, remove and add questions!!
+	// get all quiz questions so the manager could update, remove and add
+	// questions!!
+
+	private void restartVariables() {
+		quiz = null;
+		quizCopy = null;
+		question = null;
+		answer = null;
+	}
 
 }

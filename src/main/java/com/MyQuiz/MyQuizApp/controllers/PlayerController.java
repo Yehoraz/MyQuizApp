@@ -51,40 +51,63 @@ public class PlayerController {
 
 	private Quiz quiz = null;
 	private Player player = null;
+	private List<Question> questions = null;
+	private List<Question> randomQuestions = null;
+	private SuggestedQuestion sQuestion = null;
 	private Thread quizCopyThread = null;
+	int score = 0;
 
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
 	@PostMapping("/createQuiz")
 	public ResponseEntity<?> createQuiz(@RequestBody Quiz quiz) {
+		restartVariables();
 		quiz.setId(createQuizId());
 		if (ValidationUtil.validationCheck(quiz)) {
-			try {
-				quizService.addQuiz(quiz);
-			} catch (EntityExistsException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED)
-						.body("Server Error please try again later or contact us");
-			}
-			long id = quiz.getId();
-			quiz = null;
-			quiz = quizService.getQuizById(id);
-			if (quiz != null) {
-				//need to check this lambda!!!!
-				quiz.getQuestions().forEach(q-> q.getAnswers().forEach(a-> {if(a.isCorrectAnswer()) {q.setCorrectAnswerId(a.getId());}}));
-				//if lambda work should delete this for loop!!
-				for(Question q: quiz.getQuestions()) {
-					for(Answer a: q.getAnswers()) {
-						if(a.isCorrectAnswer()) {
+			if (quizService.ifPlayerHasQuizOpen(quiz.getQuizManagerId())) {
+				quiz.getQuestions().forEach(q->q.setApproved(false));
+				try {
+					quizService.addQuiz(quiz);
+				} catch (EntityExistsException e) {
+					return ResponseEntity.status(HttpStatus.ACCEPTED)
+							.body("Server Error please try again later or contact us");
+				}
+				long id = quiz.getId();
+				quiz = null;
+				quiz = quizService.getQuizById(id);
+				if (quiz != null) {
+					// need to check this lambda!!!!
+					quiz.getQuestions().forEach(q -> q.getAnswers().forEach(a -> {
+						if (a.isCorrectAnswer()) {
 							q.setCorrectAnswerId(a.getId());
-							break;
+						}
+					}));
+					// if lambda work should delete this "for" loop!!
+					for (Question q : quiz.getQuestions()) {
+						for (Answer a : q.getAnswers()) {
+							if (a.isCorrectAnswer()) {
+								q.setCorrectAnswerId(a.getId());
+								break;
+							}
 						}
 					}
+					
+					try {
+						quizService.updateQuiz(quiz);
+					} catch (EntityExistsException e) {
+						return ResponseEntity.status(HttpStatus.ACCEPTED)
+								.body("Server Error please try again later or contact us");
+					}
+					quizCopyThread = new Thread(new QuizCopyThread(quiz, quizCopyService));
+					quizCopyThread.start();
+					return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
+				} else {
+					return ResponseEntity.status(HttpStatus.ACCEPTED)
+							.body("Server error please try again later or contact us");
 				}
-				quizCopyThread = new Thread(new QuizCopyThread(quiz, quizCopyService));
-				quizCopyThread.start();
-				return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
-			}else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server error please try again later or contact us");
+			} else {
+				return ResponseEntity.status(HttpStatus.ACCEPTED)
+						.body("You can not have more than one Quiz open at the same time");
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
@@ -95,7 +118,7 @@ public class PlayerController {
 	// for exceptions!!!
 	@PostMapping("/answer/{quizId}")
 	public ResponseEntity<?> answerQuiz(@PathVariable long quizId, @RequestBody QuizPlayerAnswers playerAnswers) {
-		int score = 0;
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (ValidationUtil.validationCheck(playerAnswers)) {
@@ -147,6 +170,7 @@ public class PlayerController {
 
 	@PostMapping("/join/{quizId}/{playerId}")
 	public ResponseEntity<?> joinQuiz(@PathVariable long quizId, @PathVariable long playerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.isQuizPrivate() == false) {
@@ -177,6 +201,7 @@ public class PlayerController {
 
 	@PostMapping("/leave/{quizId}/{playerId}")
 	public ResponseEntity<?> leaveQuiz(@PathVariable long quizId, @PathVariable long playerId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			player = playerService.getPlayerById(playerId);
@@ -214,30 +239,29 @@ public class PlayerController {
 	}
 
 	@PutMapping("/updateSuggestedQuestion/{sqID}/{playerId}")
-	public ResponseEntity<?> updateSuggestedQuestion(@PathVariable("sqID") long sQuestionId,
-			@PathVariable long playerId) {
-		SuggestedQuestion sQuestion = suggestedQuestionService.getSuggestedQuestion(sQuestionId);
+	public void updateSuggestedQuestion(@PathVariable("sqID") long sQuestionId, @PathVariable long playerId) {
+		restartVariables();
+		sQuestion = suggestedQuestionService.getSuggestedQuestion(sQuestionId);
 		if (sQuestion != null) {
 			if (sQuestion.getPlayerId() == playerId) {
 				if (ValidationUtil.validationCheck(sQuestion)) {
 					suggestedQuestionService.updateSuggestedQuestion(sQuestion);
-					return ResponseEntity.status(HttpStatus.OK).body("Suggested Question updated");
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+					// logger
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED)
-						.body("Only the player who suggested the question can update it");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Suggested question does not exists");
+			// logger
 		}
 	}
 
 	@GetMapping("/getAllQuestions")
 	public ResponseEntity<?> getAllQuestions() {
+		restartVariables();
 		try {
-			List<Question> questions = (List<Question>) Hibernate.unproxy(questionService.getAllQuestions());
+			questions = (List<Question>) Hibernate.unproxy(questionService.getAllApprovedQuestions());
 			return ResponseEntity.status(HttpStatus.OK).body(questions);
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
@@ -246,21 +270,31 @@ public class PlayerController {
 
 	@GetMapping("/getRandomQuestions/{numberOfRandomQuestions}")
 	public ResponseEntity<?> getRandomQuestions(@PathVariable byte numberOfRandomQuestions) {
-		List<Question> questions;
+		restartVariables();
 		try {
-			questions = questionService.getAllQuestions();
+			questions = questionService.getAllApprovedQuestions();
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
 		if (questions.size() <= numberOfRandomQuestions) {
 			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
 		} else {
-			List<Question> randomQuestions = new ArrayList<Question>();
+			randomQuestions = new ArrayList<Question>();
 			while (randomQuestions.size() < numberOfRandomQuestions) {
 				randomQuestions.add(questions.get(Math.max(1, ((int) Math.random() * questions.size()))));
 			}
 			return ResponseEntity.status(HttpStatus.OK).body(randomQuestions);
 		}
+	}
+
+	private void restartVariables() {
+		quiz = null;
+		player = null;
+		quizCopyThread = null;
+		questions = null;
+		randomQuestions = null;
+		sQuestion = null;
+		score = 0;
 	}
 
 	private long createQuizId() {

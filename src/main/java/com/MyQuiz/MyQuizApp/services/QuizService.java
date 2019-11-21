@@ -41,8 +41,20 @@ public class QuizService {
 		}
 	}
 
-	public Quiz getQuizById(long quizId) throws EntityNotFoundException {
+	public Quiz getQuizById(long quizId) {
 		return repository.findById(quizId).orElse(null);
+	}
+	
+	public Quiz getQuizOpenByManagerId(long quizManagerId) {
+		return repository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
+	}
+	
+	public Quiz getQuizStartByManagerId(long quizManagerId) {
+		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNull(quizManagerId).orElse(null);
+	}
+	
+	public List<Quiz> getAllPrevQuizs(long quizManagerId){
+		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNotNull(quizManagerId);
 	}
 
 	public List<Quiz> getAllQuizs() {
@@ -57,6 +69,10 @@ public class QuizService {
 		if (repository.count() > 0) {
 			repository.deleteByQuizEndDateBefore(date);
 		}
+	}
+	
+	public boolean ifPlayerHasQuizOpen(long playerId) {
+		return repository.findByQuizManagerIdAndQuizEndDateIsNotNull(playerId);
 	}
 
 	public boolean ifExistsById(long quizId) {

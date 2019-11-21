@@ -46,11 +46,11 @@ public class QuestionService {
 	}
 	
 	public List<Question> getAllQuestions() throws EntityNotFoundException {
-		if(repository.count() > 0) {
 			return repository.findAll();
-		}else {
-			return null;
-		}
+	}
+	
+	public List<Question> getAllApprovedQuestions(){
+		return repository.findByIsApproved();
 	}
 	
 }

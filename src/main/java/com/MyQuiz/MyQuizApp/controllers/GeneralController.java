@@ -33,10 +33,12 @@ public class GeneralController {
 
 	private Quiz quiz = null;
 	private Player player = null;
+	long deleteTimeStamp = 0;
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
 	@GetMapping("/getWinner/{quizId}")
 	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
+		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.getQuizEndDate() != null
@@ -52,21 +54,21 @@ public class GeneralController {
 	}
 
 	@PutMapping("/updatePlayerInfo")
-	public ResponseEntity<?> updatePlayerInfo(@RequestBody Player newPlayerInfo) {
+	public void updatePlayerInfo(@RequestBody Player newPlayerInfo) {
+		restartVariables();
 		if (ValidationUtil.validationCheck(newPlayerInfo)) {
 			player = playerService.getPlayerById(newPlayerInfo.getId());
 			if (player != null) {
 				try {
 					playerService.updatePlayer(newPlayerInfo);
 				} catch (EntityNotFoundException e) {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+					// logger
 				}
-				return ResponseEntity.status(HttpStatus.OK).body("Player updated");
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+				// logger
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			// logger
 		}
 	}
 
@@ -86,12 +88,19 @@ public class GeneralController {
 
 	@DeleteMapping("/deleteExpiredQuizs")
 	public void deleteExpiredQuizs() {
-		long deleteTimeStamp = (System.currentTimeMillis() - ((1000 * 60 * 60 * 24) * 30));
+		restartVariables();
+		deleteTimeStamp = (System.currentTimeMillis() - ((1000 * 60 * 60 * 24) * 30));
 		try {
 			quizService.deleteExpiredQuizs(new Date(deleteTimeStamp));
 		} catch (EntityNotFoundException e) {
 			System.out.println("some logger");
 		}
+	}
+
+	public void restartVariables() {
+		quiz = null;
+		player = null;
+		deleteTimeStamp = 0;
 	}
 
 }
