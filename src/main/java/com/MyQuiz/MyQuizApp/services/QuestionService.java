@@ -50,7 +50,7 @@ public class QuestionService {
 	}
 	
 	public List<Question> getAllApprovedQuestions(){
-		return repository.findByIsApproved();
+		return repository.findByIsApproved(true);
 	}
 	
 }

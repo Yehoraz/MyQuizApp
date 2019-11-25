@@ -1,7 +1,8 @@
 package com.MyQuiz.MyQuizApp.beans;
 
-import javax.persistence.Entity;
 import javax.persistence.Id;
+
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,8 +11,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-public class Player {
+@Document
+public class PlayerMongo {
 
 	@Id
 	private long id;

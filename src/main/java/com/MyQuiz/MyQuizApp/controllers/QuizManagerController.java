@@ -1,11 +1,11 @@
 package com.MyQuiz.MyQuizApp.controllers;
 
 import java.sql.Date;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.EntityNotFoundException;
 
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,23 +18,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
+import com.MyQuiz.MyQuizApp.beans.PlayerMongo;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
 import com.MyQuiz.MyQuizApp.beans.QuizCopy;
+import com.MyQuiz.MyQuizApp.beans.QuizInfo;
 import com.MyQuiz.MyQuizApp.services.AnswerService;
 import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuestionService;
 import com.MyQuiz.MyQuizApp.services.QuizCopyService;
+import com.MyQuiz.MyQuizApp.services.QuizInfoService;
 import com.MyQuiz.MyQuizApp.services.QuizService;
 import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 
 @RestController
 public class QuizManagerController {
-
-	// must make a check method for each quiz, if the max time limit has reached
-	// then quiz got to stop by its own!!!!!!!!!
-
-	// must create check methods in service/facade!!!!!!
 
 	@Autowired
 	private QuizService quizService;
@@ -51,10 +49,15 @@ public class QuizManagerController {
 	@Autowired
 	private PlayerService playerService;
 
+	@Autowired
+	private QuizInfoService quizInfoService;
+
 	private Quiz quiz = null;
 	private QuizCopy quizCopy = null;
 	private Question question = null;
 	private Answer answer = null;
+	private QuizInfo quizInfo = null;
+	private List<PlayerMongo> playersMongo = null;
 
 	@PutMapping("/startQuiz/{quizId}/{startTime}/{quizManagerId}")
 	public void startQuiz(@PathVariable long quizId, @PathVariable long startTime, @PathVariable long quizManagerId) {
@@ -64,8 +67,10 @@ public class QuizManagerController {
 			if (quiz.getQuizManagerId() == quizManagerId) {
 				if (quiz.getQuizStartDate() == null) {
 					quiz.setQuizStartDate(new Date(startTime));
+					quiz.setQuizEndDate(new Date(startTime + quiz.getQuizMaxTimeInMillis()));
 					try {
 						quizService.updateQuiz(quiz);
+						// push notification with QuizCopy need to be sent!
 					} catch (EntityNotFoundException e) {
 						// logger
 					}
@@ -86,21 +91,17 @@ public class QuizManagerController {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
-			if (quiz.getQuizEndDate() != null) {
-				if (quiz.getQuizManagerId() == quizManagerId) {
-					if (quiz.getQuizStartDate().getTime() < endTime) {
-						quiz.setQuizEndDate(new Date(endTime));
-						try {
-							quizService.updateQuiz(quiz);
-							QuizCopy quizCopy = quizCopyService.getQuizCopy(quiz.getId());
-							quizCopyService.removeQuizCopy(quizCopy);
-						} catch (EntityNotFoundException e) {
-							// logger
-						}
-						// logger
-					} else {
+			if (quiz.getQuizManagerId() == quizManagerId) {
+				if (quiz.getQuizStartDate().getTime() < endTime && quiz.getQuizEndDate().getTime() > endTime) {
+					quiz.setQuizEndDate(new Date(endTime));
+					try {
+						quizService.updateQuiz(quiz);
+						QuizCopy quizCopy = quizCopyService.getQuizCopy(quiz.getId());
+						quizCopyService.removeQuizCopy(quizCopy);
+					} catch (EntityNotFoundException e) {
 						// logger
 					}
+					// logger
 				} else {
 					// logger
 				}
@@ -224,7 +225,7 @@ public class QuizManagerController {
 	}
 
 	@DeleteMapping("/removeQuestion/{quizId}/{questionId}/{quizManagerId}")
-	public void removeQuestion(@PathVariable long quizId, @PathVariable int questionId,
+	public ResponseEntity<?> removeQuestion(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable long quizManagerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
@@ -241,21 +242,21 @@ public class QuizManagerController {
 							// object
 							quizCopy.getQuestions().remove(question);
 							quizCopyService.updateQuizCopy(quizCopy);
+							return ResponseEntity.status(HttpStatus.OK).body(null);
 						} catch (EntityNotFoundException e) {
-							// logger
+							return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 						}
-						// logger
 					} else {
-						// logger
+						return ResponseEntity.status(HttpStatus.HTTP_VERSION_NOT_SUPPORTED).body(null);
 					}
 				} else {
-					// logger
+					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 				}
 			} else {
-				// logger
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			// logger
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
@@ -266,9 +267,17 @@ public class QuizManagerController {
 		if (quiz != null) {
 			if (quiz.getQuizManagerId() == quizManagerId) {
 				try {
+					playersMongo = new ArrayList<PlayerMongo>();
+					quiz.getPlayers().forEach(p -> playersMongo
+							.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
+					quizInfo = new QuizInfo(quiz.getId(), quiz.getQuizName(), quiz.getWinnerPlayer().getId(),
+							playersMongo);
+					quizInfoService.addQuizInfo(quizInfo);
 					quizService.removeQuiz(quiz);
 					quizCopy = quizCopyService.getQuizCopy(quizId);
-					quizCopyService.removeQuizCopy(quizCopy);
+					if (quizCopy != null) {
+						quizCopyService.removeQuizCopy(quizCopy);
+					}
 				} catch (EntityNotFoundException e) {
 					// logger
 				}
@@ -303,16 +312,6 @@ public class QuizManagerController {
 		}
 	}
 
-	@GetMapping("/getAllPrevQuizs/{quizManagerId}")
-	public ResponseEntity<?> getAllPrevQuizs(@PathVariable long quizManagerId) {
-		List<Quiz> quizs = quizService.getAllPrevQuizs(quizManagerId);
-		if (quizs != null) {
-			return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
-		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("You have never managed any quiz");
-		}
-	}
-
 	@PostMapping("/addQuestionToQuiz/{quizManagerId}")
 	public ResponseEntity<?> addQuestionToQuiz(@PathVariable long quizManagerId, @RequestBody Question question) {
 		restartVariables();
@@ -332,15 +331,13 @@ public class QuizManagerController {
 		}
 	}
 
-	// missing method!!!
-	// get all quiz questions so the manager could update, remove and add
-	// questions!!
-
 	private void restartVariables() {
 		quiz = null;
 		quizCopy = null;
 		question = null;
 		answer = null;
+		quizInfo = null;
+		playersMongo = null;
 	}
 
 }

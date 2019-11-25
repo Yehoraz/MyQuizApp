@@ -32,7 +32,6 @@ public class GeneralController {
 	private PlayerService playerService;
 
 	private Quiz quiz = null;
-	private Player player = null;
 	long deleteTimeStamp = 0;
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
@@ -53,25 +52,6 @@ public class GeneralController {
 		}
 	}
 
-	@PutMapping("/updatePlayerInfo")
-	public void updatePlayerInfo(@RequestBody Player newPlayerInfo) {
-		restartVariables();
-		if (ValidationUtil.validationCheck(newPlayerInfo)) {
-			player = playerService.getPlayerById(newPlayerInfo.getId());
-			if (player != null) {
-				try {
-					playerService.updatePlayer(newPlayerInfo);
-				} catch (EntityNotFoundException e) {
-					// logger
-				}
-			} else {
-				// logger
-			}
-		} else {
-			// logger
-		}
-	}
-
 	@PostMapping("/addPlayer")
 	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
 		if (ValidationUtil.validationCheck(player)) {
@@ -83,6 +63,13 @@ public class GeneralController {
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+		}
+	}
+	
+	@PutMapping("/updatePlayer")
+	public void updatePlayer(@RequestBody Player player){
+		if(ValidationUtil.validationCheck(player)) {
+			playerService.updatePlayer(player);
 		}
 	}
 
@@ -99,7 +86,6 @@ public class GeneralController {
 
 	public void restartVariables() {
 		quiz = null;
-		player = null;
 		deleteTimeStamp = 0;
 	}
 

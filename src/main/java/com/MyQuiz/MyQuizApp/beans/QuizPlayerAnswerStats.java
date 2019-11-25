@@ -1,9 +1,6 @@
 package com.MyQuiz.MyQuizApp.beans;
 
-import java.util.List;
-
 import javax.persistence.Id;
-import javax.persistence.OneToMany;
 
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,16 +12,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document
-public class QuizInfo {
-	
+public class QuizPlayerAnswerStats {
+
 	@Id
-	private long quizId;
+	private long playerId;
 	
 	private String quizName;
-	
-	private long winnerPlayerId;
-	
-	@OneToMany
-	private List<PlayerMongo> quizPlayers;
-	
+
+	// generate by Server Side
+	private int score;
+
+	// generate by Server Side
+	private long completionTime;
+
+
 }

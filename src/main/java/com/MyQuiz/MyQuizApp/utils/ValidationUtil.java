@@ -14,10 +14,10 @@ public class ValidationUtil {
 		if (obj != null) {
 			if (obj instanceof Quiz) {
 				Quiz tempQuiz = (Quiz) obj;
-				if (tempQuiz.getQuizName().length() < 1 || tempQuiz.getId() < 100000000000000000l || tempQuiz.getPlayers() == null || tempQuiz.getQuestions() == null ||
-						tempQuiz.getQuestions().size() < 1 || tempQuiz.getQuizOpenDate() == null
-						|| tempQuiz.getWinnerPlayer() != null ||
-						 tempQuiz.getQuizManagerId() == 0
+				if (tempQuiz.getQuizName().length() < 1 || tempQuiz.getId() < 100000000000000000l
+						|| tempQuiz.getPlayers() == null || tempQuiz.getQuestions() == null
+						|| tempQuiz.getQuestions().size() < 1 || tempQuiz.getQuizOpenDate() == null
+						|| tempQuiz.getWinnerPlayer() != null || tempQuiz.getQuizManagerId() == 0
 						|| tempQuiz.getQuizMaxTimeInMillis() < (1000 * 10)) {
 					return false;
 				} else {
@@ -64,11 +64,15 @@ public class ValidationUtil {
 			} else if (obj instanceof QuizPlayerAnswers) {
 				QuizPlayerAnswers qPlayerAnswers = (QuizPlayerAnswers) obj;
 				if (qPlayerAnswers.getScore() < 0 || qPlayerAnswers.getPlayerId() < 0
-						|| qPlayerAnswers.getCompletionTime() < 0 || qPlayerAnswers.getPlayerAnswers() == null) {
+						|| qPlayerAnswers.getCompletionTime() < 0) {
 					return false;
 				} else {
-					if (qPlayerAnswers.getPlayerAnswers().values().stream().filter(v -> v < 0).count() > 0) {
-						return false;
+					if (qPlayerAnswers.getPlayerAnswers() != null) {
+						if (qPlayerAnswers.getPlayerAnswers().values().stream().filter(v -> v < 0).count() > 0) {
+							return false;
+						} else {
+							return true;
+						}
 					} else {
 						return true;
 					}

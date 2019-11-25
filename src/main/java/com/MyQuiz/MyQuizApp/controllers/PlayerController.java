@@ -21,11 +21,13 @@ import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
+import com.MyQuiz.MyQuizApp.beans.QuizInfo;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
 import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuestionService;
 import com.MyQuiz.MyQuizApp.services.QuizCopyService;
+import com.MyQuiz.MyQuizApp.services.QuizInfoService;
 import com.MyQuiz.MyQuizApp.services.QuizService;
 import com.MyQuiz.MyQuizApp.services.SuggestedQuestionService;
 import com.MyQuiz.MyQuizApp.threads.QuizCopyThread;
@@ -49,13 +51,18 @@ public class PlayerController {
 	@Autowired
 	private QuestionService questionService;
 
+	@Autowired
+	private QuizInfoService quizInfoService;
+
 	private Quiz quiz = null;
 	private Player player = null;
 	private List<Question> questions = null;
 	private List<Question> randomQuestions = null;
 	private SuggestedQuestion sQuestion = null;
 	private Thread quizCopyThread = null;
+	private QuizInfo quizInfo = null;
 	int score = 0;
+	List<Quiz> quizs = null;
 
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
@@ -65,7 +72,7 @@ public class PlayerController {
 		quiz.setId(createQuizId());
 		if (ValidationUtil.validationCheck(quiz)) {
 			if (quizService.ifPlayerHasQuizOpen(quiz.getQuizManagerId())) {
-				quiz.getQuestions().forEach(q->q.setApproved(false));
+				quiz.getQuestions().forEach(q -> q.setApproved(false));
 				try {
 					quizService.addQuiz(quiz);
 				} catch (EntityExistsException e) {
@@ -91,7 +98,7 @@ public class PlayerController {
 							}
 						}
 					}
-					
+
 					try {
 						quizService.updateQuiz(quiz);
 					} catch (EntityExistsException e) {
@@ -127,8 +134,8 @@ public class PlayerController {
 					playerAnswers
 							.setCompletionTime(playerAnswers.getCompletionTime() - quiz.getQuizStartDate().getTime());
 					if (quiz.getPlayers().contains(player)) {
-						if (quiz.getQuizEndDate() == null || (System.currentTimeMillis()
-								- quiz.getQuizEndDate().getTime()) < MAX_TIME_PAST_QUIZ_END) {
+						if (quiz.getQuizEndDate() != null && quiz.getQuizEndDate()
+								.getTime() > (System.currentTimeMillis() - MAX_TIME_PAST_QUIZ_END)) {
 							if (quiz.getQuizPlayerAnswers().stream()
 									.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() > 0) {
 								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player already answered");
@@ -174,7 +181,7 @@ public class PlayerController {
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.isQuizPrivate() == false) {
-				if (quiz.getQuizEndDate() == null) {
+				if (quiz.getQuizEndDate().getTime() > System.currentTimeMillis()) {
 					player = playerService.getPlayerById(playerId);
 					if (player != null) {
 						quiz.getPlayers().add(player);
@@ -206,15 +213,24 @@ public class PlayerController {
 		if (quiz != null) {
 			player = playerService.getPlayerById(playerId);
 			if (player != null) {
-				if (quiz.getPlayers().remove(player)) {
-					try {
-						quizService.updateQuiz(quiz);
-					} catch (EntityNotFoundException e) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+				if (quiz.getQuizStartDate() == null) {
+					if (quiz.getPlayers().remove(player)) {
+						try {
+							quizService.updateQuiz(quiz);
+						} catch (EntityNotFoundException e) {
+							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+						}
+						return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz");
+					} else {
+						return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
 					}
-					return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz");
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
+					if ((quiz.getQuizPlayerAnswers().stream().filter(qp -> qp.getPlayerId() == player.getId())
+							.count() > 0)) {
+						quiz.getQuizPlayerAnswers()
+								.add(new QuizPlayerAnswers(player.getId(), 0, 99999999999999999l, null));
+					}
+					return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz with score 0");
 				}
 			} else {
 				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
@@ -238,22 +254,24 @@ public class PlayerController {
 		}
 	}
 
-	@PutMapping("/updateSuggestedQuestion/{sqID}/{playerId}")
-	public void updateSuggestedQuestion(@PathVariable("sqID") long sQuestionId, @PathVariable long playerId) {
+	@PutMapping("/updateSuggestedQuestion/{playerId}")
+	public ResponseEntity<?> updateSuggestedQuestion(@PathVariable long playerId,
+			@RequestBody SuggestedQuestion suggestedQuestion) {
 		restartVariables();
-		sQuestion = suggestedQuestionService.getSuggestedQuestion(sQuestionId);
+		sQuestion = suggestedQuestionService.getSuggestedQuestion(suggestedQuestion.getId());
 		if (sQuestion != null) {
-			if (sQuestion.getPlayerId() == playerId) {
-				if (ValidationUtil.validationCheck(sQuestion)) {
+			if (ValidationUtil.validationCheck(suggestedQuestion)) {
+				if (sQuestion.getPlayerId() == playerId) {
 					suggestedQuestionService.updateSuggestedQuestion(sQuestion);
+					return ResponseEntity.status(HttpStatus.OK).body(null);
 				} else {
-					// logger
+					return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 				}
 			} else {
-				// logger
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 			}
 		} else {
-			// logger
+			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 		}
 	}
 
@@ -261,8 +279,8 @@ public class PlayerController {
 	public ResponseEntity<?> getAllQuestions() {
 		restartVariables();
 		try {
-			questions = (List<Question>) Hibernate.unproxy(questionService.getAllApprovedQuestions());
-			return ResponseEntity.status(HttpStatus.OK).body(questions);
+			questions = questionService.getAllApprovedQuestions();
+			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
 		} catch (EntityNotFoundException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
@@ -287,6 +305,32 @@ public class PlayerController {
 		}
 	}
 
+	@GetMapping("/getQuizInfo/{quizId}")
+	public ResponseEntity<?> getQuizInfo(@PathVariable long quizId) {
+		restartVariables();
+		quizInfo = quizInfoService.getQuizInfo(quizId);
+		if (quizInfo != null) {
+			return ResponseEntity.status(HttpStatus.OK).body(quizInfo);
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+		}
+	}
+
+	@GetMapping("/getAllPrevQuizs/{playerId}")
+	public ResponseEntity<?> getAllPrevQuizs(@PathVariable long playerId) {
+		quizs = quizService.getAllPrevQuizs(playerId);
+		if (quizs != null) {
+			return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
+		} else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("You have never managed any quiz");
+		}
+	}
+
+	@PutMapping("/helloCheck")
+	public ResponseEntity<?> helloCheck() {
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("fadf");
+	}
+
 	private void restartVariables() {
 		quiz = null;
 		player = null;
@@ -294,7 +338,9 @@ public class PlayerController {
 		questions = null;
 		randomQuestions = null;
 		sQuestion = null;
+		quizInfo = null;
 		score = 0;
+		quizs = null;
 	}
 
 	private long createQuizId() {

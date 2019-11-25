@@ -50,11 +50,11 @@ public class QuizService {
 	}
 	
 	public Quiz getQuizStartByManagerId(long quizManagerId) {
-		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNull(quizManagerId).orElse(null);
+		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateAfter(quizManagerId, new Date(System.currentTimeMillis())).orElse(null);
 	}
 	
 	public List<Quiz> getAllPrevQuizs(long quizManagerId){
-		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNotNull(quizManagerId);
+		return repository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateBefore(quizManagerId, new Date(System.currentTimeMillis()));
 	}
 
 	public List<Quiz> getAllQuizs() {
@@ -72,7 +72,7 @@ public class QuizService {
 	}
 	
 	public boolean ifPlayerHasQuizOpen(long playerId) {
-		return repository.findByQuizManagerIdAndQuizEndDateIsNotNull(playerId);
+		return repository.findByQuizManagerIdAndQuizEndDateAfter(playerId, new Date(System.currentTimeMillis()));
 	}
 
 	public boolean ifExistsById(long quizId) {

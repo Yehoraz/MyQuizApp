@@ -11,6 +11,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long>{
 
 	public boolean findByQuestionText(String questionText);
 	
-	public List<Question> findByIsApproved();
+	public List<Question> findByIsApproved(boolean flag);
 	
 }

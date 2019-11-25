@@ -14,12 +14,14 @@ public interface QuizRepository extends JpaRepository<Quiz, Long>{
 
 	public void deleteByQuizEndDateBefore(Date date);
 	
-	public boolean findByQuizManagerIdAndQuizEndDateIsNotNull(long quizManagerId);
+	public boolean findByQuizManagerIdAndQuizEndDateAfter(long quizManagerId, Date endDate);
 	
 	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNull(long quizManagerId);
 	
-	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNull(long quizManagerId);
+	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateAfter(long quizManagerId, Date endDate);
 	
-	public List<Quiz> findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateIsNotNull(long quizManagerId);
+	public List<Quiz> findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateBefore(long quizManagerId, Date endDate);
+	
+	public List<Quiz> findByQuizEndDateIsNull();
 	
 }
