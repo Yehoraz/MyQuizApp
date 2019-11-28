@@ -10,6 +10,7 @@ public class MyQuizAppApplication {
 	
 	public static void main(String[] args) {
 		SpringApplication.run(MyQuizAppApplication.class, args);
+		System.out.println("Go");
 	}
 	
 }

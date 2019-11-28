@@ -9,6 +9,6 @@ import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
 @Repository
 public interface SuggestedQuestionRepository extends JpaRepository<SuggestedQuestion, Long>{
 
-	public boolean findByQuestion(Question question);
+	public boolean existsByQuestion(Question question);
 	
 }

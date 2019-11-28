@@ -72,7 +72,7 @@ public class QuizService {
 	}
 	
 	public boolean ifPlayerHasQuizOpen(long playerId) {
-		return repository.findByQuizManagerIdAndQuizEndDateAfter(playerId, new Date(System.currentTimeMillis()));
+		return repository.existsByQuizManagerIdAndQuizEndDateAfter(playerId, new Date(System.currentTimeMillis()));
 	}
 
 	public boolean ifExistsById(long quizId) {

@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
@@ -61,17 +60,17 @@ public class PlayerController {
 	private SuggestedQuestion sQuestion = null;
 	private Thread quizCopyThread = null;
 	private QuizInfo quizInfo = null;
-	int score = 0;
-	List<Quiz> quizs = null;
+	private int score = 0;
+	private List<Quiz> quizs = null;
 
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
 	@PostMapping("/createQuiz")
-	public ResponseEntity<?> createQuiz(@RequestBody Quiz quiz) {
+	public ResponseEntity<String> createQuiz(@RequestBody Quiz quiz) {
 		restartVariables();
 		quiz.setId(createQuizId());
 		if (ValidationUtil.validationCheck(quiz)) {
-			if (quizService.ifPlayerHasQuizOpen(quiz.getQuizManagerId())) {
+			if (!quizService.ifPlayerHasQuizOpen(quiz.getQuizManagerId())) {
 				quiz.getQuestions().forEach(q -> q.setApproved(false));
 				try {
 					quizService.addQuiz(quiz);
@@ -83,22 +82,11 @@ public class PlayerController {
 				quiz = null;
 				quiz = quizService.getQuizById(id);
 				if (quiz != null) {
-					// need to check this lambda!!!!
-					quiz.getQuestions().forEach(q -> q.getAnswers().forEach(a -> {
-						if (a.isCorrectAnswer()) {
-							q.setCorrectAnswerId(a.getId());
-						}
-					}));
-					// if lambda work should delete this "for" loop!!
-					for (Question q : quiz.getQuestions()) {
-						for (Answer a : q.getAnswers()) {
-							if (a.isCorrectAnswer()) {
-								q.setCorrectAnswerId(a.getId());
-								break;
-							}
+					for (int i = 0; i < quiz.getQuestions().size(); i++) {
+						for (int j = 0; j < quiz.getQuestions().get(i).getAnswers().size(); j++) {
+							quiz.getQuestions().get(i).getAnswers().get(j).setCorrectAnswer(false);
 						}
 					}
-
 					try {
 						quizService.updateQuiz(quiz);
 					} catch (EntityExistsException e) {
@@ -175,38 +163,37 @@ public class PlayerController {
 		}
 	}
 
-	@PostMapping("/join/{quizId}/{playerId}")
+	@PutMapping("/join/{quizId}/{playerId}")
 	public ResponseEntity<?> joinQuiz(@PathVariable long quizId, @PathVariable long playerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
 			if (quiz.isQuizPrivate() == false) {
-				if (quiz.getQuizEndDate().getTime() > System.currentTimeMillis()) {
+				if (quiz.getQuizEndDate() == null || quiz.getQuizEndDate().getTime() < System.currentTimeMillis()) {
 					player = playerService.getPlayerById(playerId);
 					if (player != null) {
 						quiz.getPlayers().add(player);
 						try {
 							quizService.updateQuiz(quiz);
+							return ResponseEntity.status(HttpStatus.OK).body(null);
 						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("Joined the Quiz");
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+						return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Can not join an ended quiz");
+					return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(null);
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED)
-						.body("Quiz is private, only the Quiz manager can add you");
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
-	@PostMapping("/leave/{quizId}/{playerId}")
+	@PutMapping("/leave/{quizId}/{playerId}")
 	public ResponseEntity<?> leaveQuiz(@PathVariable long quizId, @PathVariable long playerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
@@ -218,11 +205,11 @@ public class PlayerController {
 						try {
 							quizService.updateQuiz(quiz);
 						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz");
+						return ResponseEntity.status(HttpStatus.OK).body(null);
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
+						return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 					}
 				} else {
 					if ((quiz.getQuizPlayerAnswers().stream().filter(qp -> qp.getPlayerId() == player.getId())
@@ -230,13 +217,13 @@ public class PlayerController {
 						quiz.getQuizPlayerAnswers()
 								.add(new QuizPlayerAnswers(player.getId(), 0, 99999999999999999l, null));
 					}
-					return ResponseEntity.status(HttpStatus.OK).body("You left the Quiz with score 0");
+					return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(null);
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+				return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
@@ -245,10 +232,10 @@ public class PlayerController {
 		if (ValidationUtil.validationCheck(question)) {
 			try {
 				suggestedQuestionService.addSuggestedQuestion(new SuggestedQuestion(0, playerId, question));
+				return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
 			} catch (EntityExistsException e) {
 				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question already suggested");
 			}
-			return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
@@ -259,10 +246,10 @@ public class PlayerController {
 			@RequestBody SuggestedQuestion suggestedQuestion) {
 		restartVariables();
 		sQuestion = suggestedQuestionService.getSuggestedQuestion(suggestedQuestion.getId());
-		if (sQuestion != null) {
+		if (suggestedQuestionService.getSuggestedQuestion(suggestedQuestion.getId()) != null) {
 			if (ValidationUtil.validationCheck(suggestedQuestion)) {
 				if (sQuestion.getPlayerId() == playerId) {
-					suggestedQuestionService.updateSuggestedQuestion(sQuestion);
+					suggestedQuestionService.updateSuggestedQuestion(suggestedQuestion);
 					return ResponseEntity.status(HttpStatus.OK).body(null);
 				} else {
 					return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
@@ -324,11 +311,6 @@ public class PlayerController {
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("You have never managed any quiz");
 		}
-	}
-
-	@PutMapping("/helloCheck")
-	public ResponseEntity<?> helloCheck() {
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("fadf");
 	}
 
 	private void restartVariables() {

@@ -14,7 +14,7 @@ public interface QuizRepository extends JpaRepository<Quiz, Long>{
 
 	public void deleteByQuizEndDateBefore(Date date);
 	
-	public boolean findByQuizManagerIdAndQuizEndDateAfter(long quizManagerId, Date endDate);
+	public boolean existsByQuizManagerIdAndQuizEndDateAfter(long quizManagerId, Date endDate);
 	
 	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNull(long quizManagerId);
 	

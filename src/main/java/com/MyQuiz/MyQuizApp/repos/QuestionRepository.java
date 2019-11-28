@@ -9,7 +9,7 @@ import com.MyQuiz.MyQuizApp.beans.Question;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long>{
 
-	public boolean findByQuestionText(String questionText);
+	public boolean existsByQuestionText(String questionText);
 	
 	public List<Question> findByIsApproved(boolean flag);
 	

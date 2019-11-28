@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
+import com.MyQuiz.MyQuizApp.repos.QuestionRepository;
 import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
 
 @Service
@@ -15,8 +16,11 @@ public class SuggestedQuestionService {
 	@Autowired
 	private SuggestedQuestionRepository repository;
 
+	@Autowired
+	private QuestionRepository qRepository;
+
 	public void addSuggestedQuestion(SuggestedQuestion suggestedQuestion) throws EntityExistsException {
-		if (repository.findByQuestion(suggestedQuestion.getQuestion())) {
+		if (!qRepository.existsByQuestionText(suggestedQuestion.getQuestion().getQuestionText())) {
 			repository.save(suggestedQuestion);
 		} else {
 			throw new EntityExistsException();
