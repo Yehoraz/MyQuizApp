@@ -1,4 +1,4 @@
-package com.MyQuiz.MyQuizApp;
+package com.MyQuiz.MyQuizApp.demos;
 
 import static org.junit.Assert.assertTrue;
 
@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,21 +22,34 @@ import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
+import com.MyQuiz.MyQuizApp.beans.QuizCopy;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
 import com.MyQuiz.MyQuizApp.enums.QuizType;
+import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
+import com.MyQuiz.MyQuizApp.repos.QuizRepository;
 import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestPropertySource(locations = "classpath:test.properties")
 class PlayerControllerCreateTest {
 
 	@Autowired
 	private SuggestedQuestionRepository sQuestionRepository;
 
+	@Autowired
+	private QuizCopyRepository quizCopyRepository;
+
+	@Autowired
+	private QuizRepository quizRepository;
+
+//	SuggestedQuestionRepository sQuestionRepository = Mockito.mock(SuggestedQuestionRepository.class);
+//	QuizCopyRepository quizCopyRepository = Mockito.mock(QuizCopyRepository.class);
+//	QuizRepository quizRepository = Mockito.mock(QuizRepository.class);
+
 	private RestTemplate restTemplate = new RestTemplate();
-	private String BASE_QUIZ_URL = "need to add!";
+	private String BASE_QUIZ_URL = "http://localhost:8081";
 
 	@Test
 	@Order(1)
@@ -97,9 +110,24 @@ class PlayerControllerCreateTest {
 		Quiz quiz = new Quiz(0l, "my quiz", 123l, QuizType.american, null, 0, new Date(System.currentTimeMillis()),
 				null, null, 1000000000l, false, questions, new ArrayList<Player>(), new ArrayList<QuizPlayerAnswers>());
 
-		ResponseEntity<?> responseEntity = restTemplate.postForEntity(BASE_QUIZ_URL + "/createQuiz", quiz,
-				String.class);
-		assertTrue(responseEntity.getStatusCodeValue() == HttpStatus.OK.value());
+		quizRepository.save(quiz);
+
+		System.out.println(quizRepository.findAll());
+		System.out.println("@@@@@@@@@@@@@@");
+		List<QuizCopy> quizCopies = quizCopyRepository.findAll();
+		System.out.println("################3");
+		System.out.println(quizCopyRepository);
+		System.out.println(quizCopies);
+		System.out.println("##################");
+		QuizCopy quizCopy = quizCopies.get(0);
+		quizCopy.getQuestions().get(0).setQuestionText("fsgsfgsfg");
+		quizCopy.setId(2521526216l);
+		quizCopyRepository.save(quizCopy);
+		System.out.println(quizCopyRepository.findAll());
+		System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+//		ResponseEntity<?> responseEntity = restTemplate.postForEntity(BASE_QUIZ_URL + "/createQuiz", quiz,
+//				String.class);
+//		assertTrue(responseEntity.getStatusCodeValue() == HttpStatus.OK.value());
 	}
 
 	@Test

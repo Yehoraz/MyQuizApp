@@ -2,7 +2,6 @@ package com.MyQuiz.MyQuizApp.services;
 
 import java.util.List;
 
-import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +16,8 @@ public class AnswerService {
 	@Autowired
 	private AnswerRepository repository;
 
-	public void addAnswer(Answer answer) throws EntityExistsException {
-		if (!repository.existsById(answer.getId())) {
-			repository.save(answer);
-		} else {
-			throw new EntityExistsException("Answer with id: " + answer.getId() + " already exists");
-		}
+	public Answer addAnswer(Answer answer) {
+		return repository.save(answer);
 	}
 
 	public void removeAnswer(Answer answer) throws EntityNotFoundException {
@@ -53,7 +48,7 @@ public class AnswerService {
 		if (repository.count() > 0) {
 			return repository.findAll();
 		} else {
-			throw new EntityNotFoundException("Answer database is empty");
+			return null;
 		}
 	}
 

@@ -1,4 +1,4 @@
-package com.MyQuiz.MyQuizApp;
+package com.MyQuiz.MyQuizApp.demos;
 
 import static org.junit.jupiter.api.Assertions.*;
 

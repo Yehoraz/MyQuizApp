@@ -60,7 +60,8 @@ public class QuizManagerController {
 	private List<PlayerMongo> playersMongo = null;
 
 	@PutMapping("/startQuiz/{quizId}/{startTime}/{quizManagerId}")
-	public void startQuiz(@PathVariable long quizId, @PathVariable long startTime, @PathVariable long quizManagerId) {
+	public ResponseEntity<?> startQuiz(@PathVariable long quizId, @PathVariable long startTime,
+			@PathVariable long quizManagerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
@@ -71,23 +72,24 @@ public class QuizManagerController {
 					try {
 						quizService.updateQuiz(quiz);
 						// push notification with QuizCopy need to be sent!
+						return ResponseEntity.status(HttpStatus.OK).body(null);
 					} catch (EntityNotFoundException e) {
-						// logger
+						return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 					}
-					// logger
 				} else {
-					// logger
+					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 				}
 			} else {
-				// logger
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			// logger
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
 	@PutMapping("/stopQuiz/{quizId}/{endTime}/{quizManagerId}")
-	public void stopQuiz(@PathVariable long quizId, @PathVariable long endTime, @PathVariable long quizManagerId) {
+	public ResponseEntity<?> stopQuiz(@PathVariable long quizId, @PathVariable long endTime,
+			@PathVariable long quizManagerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
@@ -98,18 +100,18 @@ public class QuizManagerController {
 						quizService.updateQuiz(quiz);
 						QuizCopy quizCopy = quizCopyService.getQuizCopy(quiz.getId());
 						quizCopyService.removeQuizCopy(quizCopy);
+						return ResponseEntity.status(HttpStatus.OK).body(null);
 					} catch (EntityNotFoundException e) {
-						// logger
+						return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 					}
-					// logger
 				} else {
-					// logger
+					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 				}
 			} else {
-				// logger
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			// logger
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
@@ -125,22 +127,22 @@ public class QuizManagerController {
 					quiz.getPlayers().add(player);
 					try {
 						quizService.updateQuiz(quiz);
+						return ResponseEntity.status(HttpStatus.OK).body("Player added");
 					} catch (EntityNotFoundException e) {
 						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 					}
-					return ResponseEntity.status(HttpStatus.OK).body("Player added");
 				} else {
-					return ResponseEntity.status(HttpStatus.CREATED).body("Something went wrong");
+					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Something went wrong");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Only the quiz manager can add players");
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 		}
 	}
 
-	@PostMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
+	@PutMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
 	public ResponseEntity<?> updateAnswer(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable int answerId, @PathVariable long quizManagerId, @RequestBody String answerText) {
 		restartVariables();
@@ -163,33 +165,34 @@ public class QuizManagerController {
 							try {
 								quizService.updateQuiz(quiz);
 								quizCopy = quizCopyService.getQuizCopy(quiz.getId());
+								//need to check if this works because Quiz question and quizcopy question are diffrent!!!
 								quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question)).getAnswers()
 										.get(quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question))
 												.getAnswers().indexOf(answer))
 										.setAnswerText(answerText);
 								quizCopyService.updateQuizCopy(quizCopy);
+								return ResponseEntity.status(HttpStatus.OK).body(null);
 							} catch (EntityNotFoundException e) {
-								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+								return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 							}
-							return ResponseEntity.status(HttpStatus.OK).body("Answer updated");
 						} else {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Answer does not exists");
+							return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 						}
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question does not exists");
+						return ResponseEntity.status(HttpStatus.HTTP_VERSION_NOT_SUPPORTED).body(null);
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz already started");
+					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
-	@PostMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
+	@PutMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
 	public ResponseEntity<?> updateQuestion(@PathVariable long quizId, @PathVariable int questionId,
 			@PathVariable long quizManagerId, @RequestBody String questionText) {
 		restartVariables();
@@ -203,24 +206,25 @@ public class QuizManagerController {
 						try {
 							quizService.updateQuiz(quiz);
 							quizCopy = quizCopyService.getQuizCopy(quizId);
+							//need to check if this works because Quiz question and quizcopy question are diffrent!!!
 							quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question))
 									.setQuestionText(questionText);
 							quizCopyService.updateQuizCopy(quizCopy);
+							return ResponseEntity.status(HttpStatus.OK).body("Question updated");
 						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 						}
-						return ResponseEntity.status(HttpStatus.OK).body("Question updated");
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question does not exists");
+						return ResponseEntity.status(HttpStatus.HTTP_VERSION_NOT_SUPPORTED).body("Question does not exists");
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz already started");
+					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("You are not the Quiz manager");
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
