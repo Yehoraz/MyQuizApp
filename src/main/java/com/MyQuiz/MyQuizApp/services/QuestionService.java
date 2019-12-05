@@ -17,9 +17,9 @@ public class QuestionService {
 	@Autowired
 	private QuestionRepository repository;
 	
-	public void addQuestion(Question question) throws EntityExistsException {
+	public Question addQuestion(Question question) throws EntityExistsException {
 		if(!repository.existsByQuestionText(question.getQuestionText())) {
-			repository.save(question);
+			return repository.save(question);
 		}else {
 			throw new EntityExistsException();
 		}

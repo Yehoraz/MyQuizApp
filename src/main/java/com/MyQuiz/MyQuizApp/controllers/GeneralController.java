@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Quiz;
+import com.MyQuiz.MyQuizApp.services.GeneralService;
 import com.MyQuiz.MyQuizApp.services.PlayerService;
 import com.MyQuiz.MyQuizApp.services.QuizService;
 import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
@@ -30,6 +31,9 @@ public class GeneralController {
 
 	@Autowired
 	private PlayerService playerService;
+	
+	@Autowired
+	private GeneralService generalService;
 
 	private Quiz quiz = null;
 	long deleteTimeStamp = 0;
@@ -56,7 +60,7 @@ public class GeneralController {
 	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
 		if (ValidationUtil.validationCheck(player)) {
 			try {
-				playerService.addPlayer(player);
+				generalService.addPlayer(player);
 				return ResponseEntity.status(HttpStatus.OK).body("Player added");
 			} catch (EntityExistsException e) {
 				return ResponseEntity.status(HttpStatus.CREATED).body("Player id already exists");
@@ -69,7 +73,7 @@ public class GeneralController {
 	@PutMapping("/updatePlayer")
 	public void updatePlayer(@RequestBody Player player){
 		if(ValidationUtil.validationCheck(player)) {
-			playerService.updatePlayer(player);
+			generalService.updatePlayer(player);
 		}
 	}
 

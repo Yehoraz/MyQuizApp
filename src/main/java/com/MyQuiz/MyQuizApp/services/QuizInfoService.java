@@ -14,8 +14,8 @@ public class QuizInfoService {
 	@Autowired
 	private QuizInfoRepository quizInfoRepository;
 	
-	public void addQuizInfo(QuizInfo quizInfo) {
-		quizInfoRepository.save(quizInfo);
+	public QuizInfo addQuizInfo(QuizInfo quizInfo) {
+		return quizInfoRepository.save(quizInfo);
 	}
 	
 	// need to transfer to AdminService

@@ -165,7 +165,8 @@ public class QuizManagerController {
 							try {
 								quizService.updateQuiz(quiz);
 								quizCopy = quizCopyService.getQuizCopy(quiz.getId());
-								//need to check if this works because Quiz question and quizcopy question are diffrent!!!
+								// need to check if this works because Quiz question and quizcopy question are
+								// diffrent!!!
 								quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question)).getAnswers()
 										.get(quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question))
 												.getAnswers().indexOf(answer))
@@ -206,7 +207,8 @@ public class QuizManagerController {
 						try {
 							quizService.updateQuiz(quiz);
 							quizCopy = quizCopyService.getQuizCopy(quizId);
-							//need to check if this works because Quiz question and quizcopy question are diffrent!!!
+							// need to check if this works because Quiz question and quizcopy question are
+							// diffrent!!!
 							quizCopy.getQuestions().get(quizCopy.getQuestions().indexOf(question))
 									.setQuestionText(questionText);
 							quizCopyService.updateQuizCopy(quizCopy);
@@ -215,7 +217,8 @@ public class QuizManagerController {
 							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 						}
 					} else {
-						return ResponseEntity.status(HttpStatus.HTTP_VERSION_NOT_SUPPORTED).body("Question does not exists");
+						return ResponseEntity.status(HttpStatus.HTTP_VERSION_NOT_SUPPORTED)
+								.body("Question does not exists");
 					}
 				} else {
 					return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
@@ -274,8 +277,8 @@ public class QuizManagerController {
 					playersMongo = new ArrayList<PlayerMongo>();
 					quiz.getPlayers().forEach(p -> playersMongo
 							.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
-					quizInfo = new QuizInfo(quiz.getId(), quiz.getQuizName(), quiz.getWinnerPlayer().getId(),
-							playersMongo);
+					quizInfo = new QuizInfo(0, quiz.getId(), quiz.getQuizName(), quiz.getWinnerPlayer().getId(),
+							quiz.getWinnerPlayerScore(), playersMongo);
 					quizInfoService.addQuizInfo(quizInfo);
 					quizService.removeQuiz(quiz);
 					quizCopy = quizCopyService.getQuizCopy(quizId);

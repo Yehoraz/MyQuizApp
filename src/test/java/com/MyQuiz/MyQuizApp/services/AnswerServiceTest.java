@@ -153,7 +153,6 @@ public class AnswerServiceTest {
 	@Order(9)
 	public void removeAllAnswers_Test() {
 		answers = answerService.getAllAnswers();
-		System.out.println(answers);
 		answers.forEach(a -> answerService.removeAnswer(a));
 		assertEquals(null, answerService.getAllAnswers());
 	}

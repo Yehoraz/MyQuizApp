@@ -1,5 +1,7 @@
 package com.MyQuiz.MyQuizApp.services;
 
+import java.util.List;
+
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 
@@ -41,6 +43,10 @@ public class QuizCopyService {
 
 	public QuizCopy getQuizCopy(long quizId) {
 			return repository.findById(quizId).orElse(null);
+	}
+	
+	public List<QuizCopy> getAllQuizCopies(){
+		return repository.findAll();
 	}
 
 }
