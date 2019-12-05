@@ -143,8 +143,8 @@ public class QuizManagerController {
 	}
 
 	@PutMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
-	public ResponseEntity<?> updateAnswer(@PathVariable long quizId, @PathVariable int questionId,
-			@PathVariable int answerId, @PathVariable long quizManagerId, @RequestBody String answerText) {
+	public ResponseEntity<?> updateAnswer(@PathVariable long quizId, @PathVariable long questionId,
+			@PathVariable long answerId, @PathVariable long quizManagerId, @RequestBody String answerText) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
 		if (quiz != null) {
@@ -194,7 +194,7 @@ public class QuizManagerController {
 	}
 
 	@PutMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
-	public ResponseEntity<?> updateQuestion(@PathVariable long quizId, @PathVariable int questionId,
+	public ResponseEntity<?> updateQuestion(@PathVariable long quizId, @PathVariable long questionId,
 			@PathVariable long quizManagerId, @RequestBody String questionText) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);
@@ -232,7 +232,7 @@ public class QuizManagerController {
 	}
 
 	@DeleteMapping("/removeQuestion/{quizId}/{questionId}/{quizManagerId}")
-	public ResponseEntity<?> removeQuestion(@PathVariable long quizId, @PathVariable int questionId,
+	public ResponseEntity<?> removeQuestion(@PathVariable long quizId, @PathVariable long questionId,
 			@PathVariable long quizManagerId) {
 		restartVariables();
 		quiz = quizService.getQuizById(quizId);

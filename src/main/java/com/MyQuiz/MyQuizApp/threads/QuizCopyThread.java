@@ -1,31 +1,35 @@
 package com.MyQuiz.MyQuizApp.threads;
 
-import javax.persistence.EntityExistsException;
-
 import com.MyQuiz.MyQuizApp.beans.Quiz;
 import com.MyQuiz.MyQuizApp.beans.QuizCopy;
-import com.MyQuiz.MyQuizApp.services.QuizCopyService;
+import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
 
 public class QuizCopyThread implements Runnable {
 
 	private Quiz quiz;
-	private QuizCopyService quizCopyService;
+	private QuizCopyRepository quizCopyRepository;
 
-	public QuizCopyThread(Quiz quiz, QuizCopyService quizCopyService) {
+	public QuizCopyThread(Quiz quiz, QuizCopyRepository quizCopyRepository) {
 		this.quiz = quiz;
-		this.quizCopyService = quizCopyService;
+		this.quizCopyRepository = quizCopyRepository;
 	}
 
 	@Override
 	public void run() {
-		if (quiz != null && quizCopyService != null) {
-			quiz.getQuestions().forEach(q -> q.getAnswers().forEach(a -> a.setCorrectAnswer(false)));
+		if (quiz != null && quizCopyRepository != null) {
+			for (int i = 0; i < quiz.getQuestions().size(); i++) {
+				for (int j = 0; j < quiz.getQuestions().get(i).getAnswers().size(); j++) {
+					quiz.getQuestions().get(i).getAnswers().get(j).setCorrectAnswer(false);
+				}
+			}
+
 			QuizCopy tempQuizCopy = new QuizCopy(quiz.getId(), quiz.getQuizName(), quiz.getQuizType(),
 					quiz.getQuestions());
-			try {
-				quizCopyService.addQuizCopy(tempQuizCopy);
-			} catch (EntityExistsException e) {
-				System.out.println("if it gets here server has a problem of loop need to check how to fix it!!!!");
+
+			if (!quizCopyRepository.existsById(tempQuizCopy.getId())) {
+				quizCopyRepository.save(tempQuizCopy);
+			} else {
+				// some exception maybe? how to handle parallel exception??
 			}
 		}
 	}

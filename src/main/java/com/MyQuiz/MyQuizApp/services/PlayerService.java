@@ -1,21 +1,11 @@
 package com.MyQuiz.MyQuizApp.services;
 
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.persistence.EntityExistsException;
-import javax.persistence.EntityNotFoundException;
-
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import com.MyQuiz.MyQuizApp.beans.Player;
 import com.MyQuiz.MyQuizApp.beans.Question;
@@ -23,7 +13,17 @@ import com.MyQuiz.MyQuizApp.beans.Quiz;
 import com.MyQuiz.MyQuizApp.beans.QuizInfo;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
+import com.MyQuiz.MyQuizApp.enums.QuizExceptionType;
+import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
+import com.MyQuiz.MyQuizApp.exceptions.NotExistsException;
+import com.MyQuiz.MyQuizApp.exceptions.QuizException;
+import com.MyQuiz.MyQuizApp.exceptions.QuizServerException;
 import com.MyQuiz.MyQuizApp.repos.PlayerRepository;
+import com.MyQuiz.MyQuizApp.repos.QuestionRepository;
+import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
+import com.MyQuiz.MyQuizApp.repos.QuizInfoRepository;
+import com.MyQuiz.MyQuizApp.repos.QuizRepository;
+import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
 import com.MyQuiz.MyQuizApp.threads.QuizCopyThread;
 import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 
@@ -31,311 +31,284 @@ import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 public class PlayerService {
 
 	@Autowired
-	private PlayerRepository repository;
+	private QuizRepository quizRepository;
 
 	@Autowired
-	private QuizService quizService;
+	private QuizCopyRepository quizCopyRepository;
 
 	@Autowired
-	private QuizCopyService quizCopyService;
+	private PlayerRepository playerRepository;
 
 	@Autowired
-	private PlayerService playerService;
+	private SuggestedQuestionRepository suggestedQuestionRepository;
 
 	@Autowired
-	private SuggestedQuestionService suggestedQuestionService;
+	private QuestionRepository questionRepository;
 
 	@Autowired
-	private QuestionService questionService;
+	private QuizInfoRepository quizInfoRepository;
 
-	@Autowired
-	private QuizInfoService quizInfoService;
-
-	private Quiz quiz = null;
-	private Player player = null;
-	private List<Question> questions = null;
-	private List<Question> randomQuestions = null;
-	private SuggestedQuestion sQuestion = null;
-	private Thread quizCopyThread = null;
-	private QuizInfo quizInfo = null;
-	private int score = 0;
-	private List<Quiz> quizs = null;
+	private Quiz quizItem = null;
+	private Player playerItem = null;
+	private List<Question> questionsItem = null;
+	private List<Question> randomQuestionsItem = null;
+	private SuggestedQuestion sQuestionItem = null;
+	private Thread quizCopyThreadItem = null;
+	private QuizInfo quizInfoItem = null;
+	private int scoreItem = 0;
+	private List<Quiz> quizsItem = null;
 
 	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
 
-	public ResponseEntity<?> createQuiz(Quiz quiz) {
+	public void createQuiz(Quiz quiz) throws QuizServerException, QuizException, InvalidInputException {
+		restartVariables();
 		quiz.setId(createQuizId());
 		if (ValidationUtil.validationCheck(quiz)) {
-			if (!quizService.ifPlayerHasQuizOpen(quiz.getQuizManagerId())) {
-				quiz.getQuestions().forEach(q -> q.setApproved(false));
-				try {
-					quizService.addQuiz(quiz);
-				} catch (EntityExistsException e) {
-					return ResponseEntity.status(HttpStatus.ACCEPTED)
-							.body("Server Error please try again later or contact us");
+			if (!quizRepository.existsByQuizManagerIdAndQuizEndDateAfter(quiz.getQuizManagerId(),
+					new Date(System.currentTimeMillis()))) {
+				for (int i = 0; i < quiz.getQuestions().size(); i++) {
+					quiz.getQuestions().get(i).setApproved(false);
 				}
-				long id = quiz.getId();
-				quiz = null;
-				quiz = quizService.getQuizById(id);
-				if (quiz != null) {
-					for (int i = 0; i < quiz.getQuestions().size(); i++) {
-						for (int j = 0; j < quiz.getQuestions().get(i).getAnswers().size(); j++) {
-							quiz.getQuestions().get(i).getAnswers().get(j).setCorrectAnswer(false);
-						}
+				if (!quizRepository.existsById(quiz.getId())) {
+					quizItem = quizRepository.save(quiz);
+					if (quizItem != null) {
+						quizCopyThreadItem = new Thread(new QuizCopyThread(quiz, quizCopyRepository));
+						quizCopyThreadItem.start();
+					} else {
+						throw new QuizServerException(quiz, "QuizRepository.save(quiz)",
+								"Server Error please try again later or contact us");
 					}
-					try {
-						quizService.updateQuiz(quiz);
-					} catch (EntityExistsException e) {
-						return ResponseEntity.status(HttpStatus.ACCEPTED)
-								.body("Server Error please try again later or contact us");
-					}
-					quizCopyThread = new Thread(new QuizCopyThread(quiz, quizCopyService));
-					quizCopyThread.start();
-					return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED)
-							.body("Server error please try again later or contact us");
+					throw new QuizServerException(quiz, "QuizRepository.save(quiz)",
+							"Server Error please try again later or contact us");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED)
-						.body("You can not have more than one Quiz open at the same time");
+				throw new QuizException(quiz, quiz.getId(), QuizExceptionType.AlreadyManageQuiz,
+						"Player already manage another quiz");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			throw new InvalidInputException(quiz, quiz.getId(), "Invalid quiz input");
 		}
 	}
 
 	// urgent!!! need to check if everything (stream and lambda) works good!!! test
 	// for exceptions!!!
-	public ResponseEntity<?> answerQuiz(@PathVariable long quizId, @RequestBody QuizPlayerAnswers playerAnswers) {
+	public void answerQuiz(long quizId, QuizPlayerAnswers playerAnswers)
+			throws QuizServerException, QuizException, NotExistsException, InvalidInputException {
 		restartVariables();
-		quiz = quizService.getQuizById(quizId);
-		if (quiz != null) {
+		quizItem = quizRepository.findById(quizId).orElse(null);
+		if (quizItem != null) {
 			if (ValidationUtil.validationCheck(playerAnswers)) {
-				player = playerService.getPlayerById(playerAnswers.getPlayerId());
-				if (player != null) {
-					playerAnswers
-							.setCompletionTime(playerAnswers.getCompletionTime() - quiz.getQuizStartDate().getTime());
-					if (quiz.getPlayers().contains(player)) {
-						if (quiz.getQuizEndDate() != null && quiz.getQuizEndDate()
+				playerItem = playerRepository.findById(playerAnswers.getPlayerId()).orElse(null);
+				if (playerItem != null) {
+					playerAnswers.setCompletionTime(
+							playerAnswers.getCompletionTime() - quizItem.getQuizStartDate().getTime());
+					if (quizItem.getPlayers().contains(playerItem)) {
+						if (quizItem.getQuizEndDate() != null && quizItem.getQuizEndDate()
 								.getTime() > (System.currentTimeMillis() - MAX_TIME_PAST_QUIZ_END)) {
-							if (quiz.getQuizPlayerAnswers().stream()
-									.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() > 0) {
-								return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player already answered");
-							} else {
-								score = (int) quiz.getQuestions().stream().filter(
+							if (quizItem.getQuizPlayerAnswers().stream()
+									.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() < 1) {
+								scoreItem = (int) quizItem.getQuestions().stream().filter(
 										q -> q.getCorrectAnswerId() == playerAnswers.getPlayerAnswers().get(q.getId()))
 										.count();
-								System.out.println("the score is: " + score);
-								playerAnswers.setScore(score);
-								quiz.getQuizPlayerAnswers().add(playerAnswers);
-								try {
-									if (quiz.getWinnerPlayerScore() < score) {
-										quiz.setWinnerPlayer(player);
-										quiz.setWinnerPlayerScore(score);
-									}
-									quizService.updateQuiz(quiz);
-								} catch (EntityNotFoundException e) {
-									return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+								playerAnswers.setScore(scoreItem);
+								quizItem.getQuizPlayerAnswers().add(playerAnswers);
+								if (quizItem.getWinnerPlayerScore() < scoreItem) {
+									quizItem.setWinnerPlayer(playerItem);
+									quizItem.setWinnerPlayerScore(scoreItem);
 								}
-								return ResponseEntity.status(HttpStatus.OK).body("Thanks your score is: " + score);
+								if (quizRepository.existsById(quizItem.getId())) {
+									quizRepository.save(quizItem);
+								} else {
+									throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
+											"Server Error please try again later or contact us");
+								}
+							} else {
+								throw new QuizException(playerItem, 0, QuizExceptionType.AlreadyAnswered,
+										"Player has already answered this quiz");
 							}
 						} else {
-							return ResponseEntity.status(HttpStatus.ACCEPTED)
-									.body("Time to answer the Quiz has passed");
+							throw new QuizException(quizItem, 0, QuizExceptionType.QuizEnded,
+									"Time to answer the Quiz has passed");
 						}
 					} else {
-						return ResponseEntity.status(HttpStatus.ACCEPTED).body("You dont belong to this Quiz");
+						throw new QuizException(playerItem, 0, QuizExceptionType.NotQuizPlayer,
+								"Player don't belong to this quiz");
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
+					throw new NotExistsException(playerAnswers, 0, "Player with this id don't exists");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+				throw new InvalidInputException(playerAnswers, 0, "Invalid player answers input");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
 
-	public ResponseEntity<?> joinQuiz(@PathVariable long quizId, @PathVariable long playerId) {
+	public void joinQuiz(long quizId, long playerId) throws QuizServerException, NotExistsException, QuizException {
 		restartVariables();
-		quiz = quizService.getQuizById(quizId);
-		if (quiz != null) {
-			if (quiz.isQuizPrivate() == false) {
-				if (quiz.getQuizEndDate() == null || quiz.getQuizEndDate().getTime() < System.currentTimeMillis()) {
-					player = playerService.getPlayerById(playerId);
-					if (player != null) {
-						quiz.getPlayers().add(player);
-						try {
-							quizService.updateQuiz(quiz);
-							return ResponseEntity.status(HttpStatus.OK).body(null);
-						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+		quizItem = quizRepository.findById(quizId).orElse(null);
+		if (quizItem != null) {
+			if (quizItem.isQuizPrivate() == false) {
+				if (quizItem.getQuizEndDate() == null
+						|| quizItem.getQuizEndDate().getTime() < System.currentTimeMillis()) {
+					playerItem = playerRepository.findById(playerId).orElse(null);
+					if (playerItem != null) {
+						quizItem.getPlayers().add(playerItem);
+						if (quizRepository.existsById(quizItem.getId())) {
+							quizRepository.save(quizItem);
+						} else {
+							throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
+									"Server Error please try again later or contact us");
 						}
 					} else {
-						return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
+						throw new NotExistsException(null, playerId, "Player with this id don't exists");
 					}
 				} else {
-					return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(null);
+					throw new QuizException(quizItem, 0, QuizExceptionType.QuizEnded, "Quiz has ended");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
+				throw new QuizException(quizItem, 0, QuizExceptionType.QuizIsPrivate, "Quiz is private");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
 
-	@PutMapping("/leave/{quizId}/{playerId}")
-	public ResponseEntity<?> leaveQuiz(@PathVariable long quizId, @PathVariable long playerId) {
+	public void leaveQuiz(long quizId, long playerId) throws QuizServerException, QuizException, NotExistsException {
 		restartVariables();
-		quiz = quizService.getQuizById(quizId);
-		if (quiz != null) {
-			player = playerService.getPlayerById(playerId);
-			if (player != null) {
-				if (quiz.getQuizStartDate() == null) {
-					if (quiz.getPlayers().remove(player)) {
-						try {
-							quizService.updateQuiz(quiz);
-						} catch (EntityNotFoundException e) {
-							return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+		quizItem = quizRepository.findById(quizId).orElse(null);
+		if (quizItem != null) {
+			playerItem = playerRepository.findById(playerId).orElse(null);
+			if (playerItem != null) {
+				if (quizItem.getQuizStartDate() == null) {
+					if (quizItem.getPlayers().remove(playerItem)) {
+						if (quizRepository.existsById(quizItem.getId())) {
+							quizRepository.save(quizItem);
+						} else {
+							throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
+									"Server Error please try again later or contact us");
 						}
-						return ResponseEntity.status(HttpStatus.OK).body(null);
 					} else {
-						return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
+						throw new QuizException(playerItem, 0, QuizExceptionType.NotQuizPlayer,
+								"Player don't belong to this quiz");
 					}
 				} else {
-					if ((quiz.getQuizPlayerAnswers().stream().filter(qp -> qp.getPlayerId() == player.getId())
+					if ((quizItem.getQuizPlayerAnswers().stream().filter(qp -> qp.getPlayerId() == playerItem.getId())
 							.count() > 0)) {
-						quiz.getQuizPlayerAnswers()
-								.add(new QuizPlayerAnswers(player.getId(), 0, 99999999999999999l, null));
+						quizItem.getQuizPlayerAnswers()
+								.add(new QuizPlayerAnswers(playerItem.getId(), 0, 99999999999999999l, null));
 					}
-					return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(null);
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
+				throw new NotExistsException(null, playerId, "Player with this id don't exists");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
 
-	@PostMapping("/suggestQuestion/{playerId}")
-	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
+	public void suggestQuestion(long playerId, Question question) throws InvalidInputException {
 		if (ValidationUtil.validationCheck(question)) {
-			try {
-				suggestedQuestionService.addSuggestedQuestion(new SuggestedQuestion(0, playerId, question));
-				return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
-			} catch (EntityExistsException e) {
-				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Question already suggested");
-			}
+			suggestedQuestionRepository.save(new SuggestedQuestion(0, playerId, question));
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			throw new InvalidInputException(question, 0, "Invalid question input");
 		}
 	}
 
-	@PutMapping("/updateSuggestedQuestion/{playerId}")
-	public ResponseEntity<?> updateSuggestedQuestion(@PathVariable long playerId,
-			@RequestBody SuggestedQuestion suggestedQuestion) {
+	public void updateSuggestedQuestion(long playerId, SuggestedQuestion suggestedQuestion)
+			throws QuizServerException, QuizException, InvalidInputException, NotExistsException {
 		restartVariables();
-		sQuestion = suggestedQuestionService.getSuggestedQuestion(suggestedQuestion.getId());
-		if (suggestedQuestionService.getSuggestedQuestion(suggestedQuestion.getId()) != null) {
+		sQuestionItem = suggestedQuestionRepository.findById(suggestedQuestion.getId()).orElse(null);
+		if (sQuestionItem != null) {
 			if (ValidationUtil.validationCheck(suggestedQuestion)) {
-				if (sQuestion.getPlayerId() == playerId) {
-					suggestedQuestionService.updateSuggestedQuestion(suggestedQuestion);
-					return ResponseEntity.status(HttpStatus.OK).body(null);
+				if (sQuestionItem.getPlayerId() == playerId) {
+					if (suggestedQuestionRepository.existsById(suggestedQuestion.getId())) {
+						suggestedQuestionRepository.save(suggestedQuestion);
+					} else {
+						throw new QuizServerException(quizItem, "SuggestedQuestionRepository.save(suggestedQuestion)",
+								"Server Error please try again later or contact us");
+					}
 				} else {
-					return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
+					throw new QuizException(suggestedQuestion, playerId, QuizExceptionType.NotSuggestedPlayer,
+							"Only the suggested player can updated this suggested question");
 				}
 			} else {
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+				throw new InvalidInputException(suggestedQuestion, 0, "Invalid suggested question input");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
+			throw new NotExistsException(null, suggestedQuestion.getId(),
+					"Suggested Question with this id don't exists");
 		}
 	}
 
-	@GetMapping("/getAllQuestions")
-	public ResponseEntity<?> getAllQuestions() {
+	public List<Question> getAllQuestions() throws NotExistsException {
 		restartVariables();
-		try {
-			questions = questionService.getAllApprovedQuestions();
-			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
-		} catch (EntityNotFoundException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
-		}
-	}
-
-	@GetMapping("/getRandomQuestions/{numberOfRandomQuestions}")
-	public ResponseEntity<?> getRandomQuestions(@PathVariable byte numberOfRandomQuestions) {
-		restartVariables();
-		try {
-			questions = questionService.getAllApprovedQuestions();
-		} catch (EntityNotFoundException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
-		}
-		if (questions.size() <= numberOfRandomQuestions) {
-			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
+		questionsItem = questionRepository.findByIsApproved(true);
+		if (questionsItem != null) {
+			return questionsItem;
 		} else {
-			randomQuestions = new ArrayList<Question>();
-			while (randomQuestions.size() < numberOfRandomQuestions) {
-				randomQuestions.add(questions.get(Math.max(1, ((int) Math.random() * questions.size()))));
+			throw new NotExistsException(null, 0, "There are no approved questions");
+		}
+	}
+
+	public List<Question> getRandomQuestions(short numberOfRandomQuestions) throws NotExistsException {
+		restartVariables();
+		questionsItem = questionRepository.findByIsApproved(true);
+		if (questionsItem != null) {
+			if (questionsItem.size() <= numberOfRandomQuestions) {
+				return questionsItem;
+			} else {
+				randomQuestionsItem = new ArrayList<Question>();
+				while (randomQuestionsItem.size() < numberOfRandomQuestions) {
+					randomQuestionsItem
+							.add(questionsItem.get(Math.max(1, ((int) Math.random() * questionsItem.size()))));
+				}
+				return randomQuestionsItem;
 			}
-			return ResponseEntity.status(HttpStatus.OK).body(randomQuestions);
+		} else {
+			throw new NotExistsException(null, 0, "There are no approved questions");
 		}
 	}
 
-	@GetMapping("/getQuizInfo/{quizId}")
-	public ResponseEntity<?> getQuizInfo(@PathVariable long quizId) {
+	public QuizInfo getQuizInfo(long quizId) throws NotExistsException {
 		restartVariables();
-		quizInfo = quizInfoService.getQuizInfo(quizId);
-		if (quizInfo != null) {
-			return ResponseEntity.status(HttpStatus.OK).body(quizInfo);
+		quizInfoItem = quizInfoRepository.findById(quizId).orElse(null);
+		if (quizInfoItem != null) {
+			return quizInfoItem;
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
 
-	@GetMapping("/getAllPrevQuizs/{playerId}")
-	public ResponseEntity<?> getAllPrevQuizs(@PathVariable long playerId) {
-		quizs = quizService.getAllPrevQuizs(playerId);
-		if (quizs != null) {
-			return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
+	public List<Quiz> getAllPrevQuizs(long playerId) throws NotExistsException {
+		quizsItem = quizRepository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateBefore(playerId,
+				new Date(System.currentTimeMillis()));
+		if (quizsItem != null) {
+			return quizsItem;
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("You have never managed any quiz");
-		}
-	}
-
-	public Player getPlayerById(long playerId) {
-		return repository.findById(playerId).orElse(null);
-	}
-
-	public List<Player> getAllPlayers() {
-		if (repository.count() > 0) {
-			return repository.findAll();
-		} else {
-			return null;
+			throw new NotExistsException(null, playerId, "You never managed any quiz");
 		}
 	}
 
 	private void restartVariables() {
-		quiz = null;
-		player = null;
-		quizCopyThread = null;
-		questions = null;
-		randomQuestions = null;
-		sQuestion = null;
-		quizInfo = null;
-		score = 0;
-		quizs = null;
+		quizItem = null;
+		playerItem = null;
+		quizCopyThreadItem = null;
+		questionsItem = null;
+		randomQuestionsItem = null;
+		sQuestionItem = null;
+		quizInfoItem = null;
+		scoreItem = 0;
+		quizsItem = null;
 	}
 
 	private long createQuizId() {
 		long quizId;
 		do {
 			quizId = (long) Math.abs((Math.random() * 1000000000000000000l));
-		} while (quizService.ifExistsById(quizId));
+		} while (quizRepository.existsById(quizId));
 		return quizId;
 	}
 

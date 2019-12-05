@@ -17,11 +17,11 @@ public class QuizService {
 	@Autowired
 	private QuizRepository repository;
 
-	public void addQuiz(Quiz quiz) throws EntityExistsException {
+	public Quiz addQuiz(Quiz quiz) throws EntityExistsException {
 		if (!repository.existsById(quiz.getId())) {
-			repository.save(quiz);
+			return repository.save(quiz);
 		} else {
-			throw new EntityExistsException("Quiz with id: " + quiz.getId() + " already exists");
+			return null;
 		}
 	}
 
@@ -33,11 +33,11 @@ public class QuizService {
 		}
 	}
 
-	public void updateQuiz(Quiz quiz) throws EntityNotFoundException {
+	public Quiz updateQuiz(Quiz quiz) throws EntityNotFoundException {
 		if (repository.existsById(quiz.getId())) {
-			repository.save(quiz);
+			return repository.save(quiz);
 		} else {
-			throw new EntityNotFoundException("Quiz with id: " + quiz.getId() + " does not exists");
+			return null;
 		}
 	}
 
