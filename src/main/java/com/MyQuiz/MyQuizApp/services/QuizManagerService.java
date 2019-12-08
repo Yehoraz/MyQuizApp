@@ -4,17 +4,8 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.persistence.EntityNotFoundException;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import com.MyQuiz.MyQuizApp.beans.Answer;
 import com.MyQuiz.MyQuizApp.beans.Player;
@@ -56,24 +47,6 @@ public class QuizManagerService {
 
 	@Autowired
 	private QuizInfoRepository quizInfoRepository;
-
-//	@Autowired
-//	private QuizService quizService;
-//
-//	@Autowired
-//	private QuizCopyService quizCopyService;
-//
-//	@Autowired
-//	private QuestionService questionService;
-//
-//	@Autowired
-//	private AnswerService answerService;
-//
-//	@Autowired
-//	private PlayerService playerService;
-//
-//	@Autowired
-//	private QuizInfoService quizInfoService;
 
 	private Quiz quizItem = null;
 	private QuizCopy quizCopyItem = null;
@@ -240,7 +213,7 @@ public class QuizManagerService {
 		}
 	}
 
-	public ResponseEntity<?> updateQuestion(long quizId, long questionId, long quizManagerId, String questionText)
+	public void updateQuestion(long quizId, long questionId, long quizManagerId, String questionText)
 			throws QuizServerException, NotExistsException, QuizException {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
@@ -290,7 +263,8 @@ public class QuizManagerService {
 		}
 	}
 
-	public void removeQuestion(long quizId, long questionId, @PathVariable long quizManagerId) {
+	public void removeQuestion(long quizId, long questionId, long quizManagerId)
+			throws NotExistsException, QuizException, QuizServerException {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
 		if (quizItem != null) {
@@ -301,7 +275,8 @@ public class QuizManagerService {
 						if (quizRepository.existsById(quizId)) {
 							quizRepository.save(quizItem);
 						} else {
-
+							throw new QuizServerException(quizItem, "QuizRepository.existsById(quizItem.getId())",
+									"Server Error please try again later or contact us");
 						}
 						quizCopyItem = quizCopyRepository.findById(quizItem.getId()).orElse(null);
 						if (quizCopyItem != null) {
@@ -314,12 +289,16 @@ public class QuizManagerService {
 								}
 							}
 						} else {
-
+							throw new QuizServerException(quizCopyItem,
+									"QuizCopyRepository.existsById(quizItem.getId())",
+									"Server Error please try again later or contact us");
 						}
 					} else {
+						throw new QuizException(questionItem, questionId, QuizExceptionType.NotQuizQuestion,
+								"Question with this id don't belong to this quiz");
 					}
 				} else {
-					throw new NotExistsException(null, questionItem, "Question with this id don't exists");
+					throw new NotExistsException(null, questionId, "Question with this id don't exists");
 				}
 			} else {
 				throw new QuizException(quizItem, quizManagerId, QuizExceptionType.NotQuizManager,
@@ -330,74 +309,64 @@ public class QuizManagerService {
 		}
 	}
 
-	@DeleteMapping("/removeQuiz/{quizId}/{quizManagerId}")
-	public void removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
+	// need to fix it! removeQuiz is a function for non started quizs only! if the
+	// quiz has started you can not remove it,
+	// also need to transfer the quizinfo and playermongo to the stop method!
+	public void removeQuiz(long quizId, long quizManagerId) throws QuizException, NotExistsException {
 		restartVariables();
-		quiz = quizService.getQuizById(quizId);
-		if (quiz != null) {
-			if (quiz.getQuizManagerId() == quizManagerId) {
-				try {
-					playersMongo = new ArrayList<PlayerMongo>();
-					quiz.getPlayers().forEach(p -> playersMongo
-							.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
-					quizInfo = new QuizInfo(0, quiz.getId(), quiz.getQuizName(), quiz.getWinnerPlayer().getId(),
-							quiz.getWinnerPlayerScore(), playersMongo);
-					quizInfoService.addQuizInfo(quizInfo);
-					quizService.removeQuiz(quiz);
-					quizCopy = quizCopyService.getQuizCopy(quizId);
-					if (quizCopy != null) {
-						quizCopyService.removeQuizCopy(quizCopy);
-					}
-				} catch (EntityNotFoundException e) {
-					// logger
+		quizItem = quizRepository.findById(quizId).orElse(null);
+		if (quizItem != null) {
+			if (quizItem.getQuizManagerId() == quizManagerId) {
+				playersMongoItem = new ArrayList<PlayerMongo>();
+				quizItem.getPlayers().forEach(p -> playersMongoItem
+						.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
+				quizInfoItem = new QuizInfo(0, quizItem.getId(), quizItem.getQuizName(),
+						quizItem.getWinnerPlayer().getId(), quizItem.getWinnerPlayerScore(), playersMongoItem);
+				quizInfoRepository.save(quizInfoItem);
+				quizRepository.deleteById(quizItem.getId());
+				if (quizCopyRepository.existsById(quizItem.getId())) {
+					quizCopyRepository.deleteById(quizItem.getId());
 				}
 			} else {
-				// logger
+				throw new QuizException(quizItem, quizManagerId, QuizExceptionType.NotQuizManager,
+						"Only this quiz manager can remove this quiz");
 			}
 		} else {
-			// logger
+			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
 
-	@GetMapping("/getOnGoingQuiz/{quizManagerId}")
-	public ResponseEntity<?> getOnGoingQuiz(@PathVariable long quizManagerId) {
+	public Quiz getOnGoingQuiz(long quizManagerId) {
 		restartVariables();
-		quiz = quizService.getQuizStartByManagerId(quizManagerId);
-		if (quiz != null) {
-			return ResponseEntity.status(HttpStatus.OK).body(quiz);
-		} else {
-			return ResponseEntity.status(HttpStatus.OK).body("You do not manage any on going quiz");
-		}
+		return quizRepository.findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateAfter(quizManagerId,
+				new Date(System.currentTimeMillis())).orElse(null);
 	}
 
-	@GetMapping("/getQuizForEdit/{quizManagerId}")
-	public ResponseEntity<?> getQuizForEdit(@PathVariable long quizManagerId) {
+	public Quiz getQuizForEdit(long quizManagerId) {
 		restartVariables();
-		quiz = quizService.getQuizOpenByManagerId(quizManagerId);
-		if (quiz != null) {
-			return ResponseEntity.status(HttpStatus.OK).body(quiz);
-		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED)
-					.body("You do not manage any open quiz or quiz has started");
-		}
+		return quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
 	}
 
-	@PostMapping("/addQuestionToQuiz/{quizManagerId}")
-	public ResponseEntity<?> addQuestionToQuiz(@PathVariable long quizManagerId, @RequestBody Question question) {
+	public void addQuestionToQuiz(long quizManagerId, Question question)
+			throws QuizServerException, NotExistsException, InvalidInputException {
 		restartVariables();
 		if (ValidationUtil.validationCheck(question)) {
 			question.setApproved(false);
-			quiz = quizService.getQuizOpenByManagerId(quizManagerId);
-			if (quiz != null) {
-				quiz.getQuestions().add(question);
-				quizService.updateQuiz(quiz);
-				return ResponseEntity.status(HttpStatus.OK).body("Question added");
+			quizItem = quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
+			if (quizItem != null) {
+				quizItem.getQuestions().add(question);
+				if (quizRepository.existsById(quizItem.getId())) {
+					quizRepository.save(quizItem);
+				} else {
+					throw new QuizServerException(quizItem, "QuizRepository.existsById(quizItem.getId())",
+							"Server Error please try again later or contact us");
+				}
 			} else {
-				return ResponseEntity.status(HttpStatus.ACCEPTED)
-						.body("You do not manage any open quiz or quiz has started");
+				throw new NotExistsException(null, quizManagerId,
+						"You do not manage any open quiz or quiz has started");
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			throw new InvalidInputException(question, 0, "Invalid question input");
 		}
 	}
 

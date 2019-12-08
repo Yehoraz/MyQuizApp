@@ -14,6 +14,7 @@ import com.MyQuiz.MyQuizApp.beans.QuizInfo;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
 import com.MyQuiz.MyQuizApp.enums.QuizExceptionType;
+import com.MyQuiz.MyQuizApp.exceptions.ExistsException;
 import com.MyQuiz.MyQuizApp.exceptions.InvalidInputException;
 import com.MyQuiz.MyQuizApp.exceptions.NotExistsException;
 import com.MyQuiz.MyQuizApp.exceptions.QuizException;
@@ -93,7 +94,7 @@ public class PlayerService {
 
 	// urgent!!! need to check if everything (stream and lambda) works good!!! test
 	// for exceptions!!!
-	public void answerQuiz(long quizId, QuizPlayerAnswers playerAnswers)
+	public int answerQuiz(long quizId, QuizPlayerAnswers playerAnswers)
 			throws QuizServerException, QuizException, NotExistsException, InvalidInputException {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
@@ -119,6 +120,7 @@ public class PlayerService {
 								}
 								if (quizRepository.existsById(quizItem.getId())) {
 									quizRepository.save(quizItem);
+									return scoreItem;
 								} else {
 									throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
 											"Server Error please try again later or contact us");
@@ -196,9 +198,16 @@ public class PlayerService {
 					}
 				} else {
 					if ((quizItem.getQuizPlayerAnswers().stream().filter(qp -> qp.getPlayerId() == playerItem.getId())
-							.count() > 0)) {
+							.count() < 1)) {
 						quizItem.getQuizPlayerAnswers()
 								.add(new QuizPlayerAnswers(playerItem.getId(), 0, 99999999999999999l, null));
+					}
+					quizItem.getPlayers().remove(playerItem);
+					if (quizRepository.existsById(quizItem.getId())) {
+						quizRepository.save(quizItem);
+					} else {
+						throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
+								"Server Error please try again later or contact us");
 					}
 				}
 			} else {
@@ -209,9 +218,13 @@ public class PlayerService {
 		}
 	}
 
-	public void suggestQuestion(long playerId, Question question) throws InvalidInputException {
+	public void suggestQuestion(long playerId, Question question) throws InvalidInputException, ExistsException {
 		if (ValidationUtil.validationCheck(question)) {
-			suggestedQuestionRepository.save(new SuggestedQuestion(0, playerId, question));
+			if (!questionRepository.existsByQuestionText(question.getQuestionText())) {
+				suggestedQuestionRepository.save(new SuggestedQuestion(0, playerId, question));
+			} else {
+				throw new ExistsException(question, 0, "Question with this text already exists");
+			}
 		} else {
 			throw new InvalidInputException(question, 0, "Invalid question input");
 		}

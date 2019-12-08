@@ -4,6 +4,7 @@ public enum QuizExceptionType {
 	NotQuizManager,
 	NotQuizPlayer,
 	NotSuggestedPlayer,
+	NotQuizQuestion,
 	AlreadyManageQuiz,
 	AlreadyAnswered,
 	QuizEnded,
