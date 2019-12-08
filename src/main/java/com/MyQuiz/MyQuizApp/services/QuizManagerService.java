@@ -22,7 +22,6 @@ import com.MyQuiz.MyQuizApp.exceptions.QuizServerException;
 import com.MyQuiz.MyQuizApp.repos.AnswerRepository;
 import com.MyQuiz.MyQuizApp.repos.PlayerRepository;
 import com.MyQuiz.MyQuizApp.repos.QuestionRepository;
-import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
 import com.MyQuiz.MyQuizApp.repos.QuizInfoRepository;
 import com.MyQuiz.MyQuizApp.repos.QuizRepository;
 import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
@@ -32,9 +31,6 @@ public class QuizManagerService {
 
 	@Autowired
 	private QuizRepository quizRepository;
-
-	@Autowired
-	private QuizCopyRepository quizCopyRepository;
 
 	@Autowired
 	private QuestionRepository questionRepository;
@@ -89,12 +85,6 @@ public class QuizManagerService {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
 		if (quizItem != null) {
-			if (quizItem.getQuizEndDate().getTime() <= System.currentTimeMillis()) {
-				quizCopyItem = quizCopyRepository.findById(quizItem.getId()).orElse(null);
-				if (quizCopyItem != null) {
-					quizCopyRepository.deleteById(quizCopyItem.getId());
-				}
-			}
 			if (quizItem.getQuizManagerId() == quizManagerId) {
 				if (quizItem.getQuizStartDate().getTime() < endTime && quizItem.getQuizEndDate().getTime() > endTime) {
 					quizItem.setQuizEndDate(new Date(endTime));
@@ -172,28 +162,6 @@ public class QuizManagerService {
 								throw new QuizServerException(quizItem, "QuizRepository.save(quizItem)",
 										"Server Error please try again later or contact us");
 							}
-							quizCopyItem = quizCopyRepository.findById(quizItem.getId()).orElse(null);
-							// need to check if this works because Quiz question and quizcopy question are
-							// diffrent!!!, if not working possibly need to set all question answers to
-							// false!
-							if (quizCopyItem != null) {
-								quizCopyItem.getQuestions().get(quizCopyItem.getQuestions().indexOf(questionItem))
-										.getAnswers()
-										.get(quizCopyItem.getQuestions()
-												.get(quizCopyItem.getQuestions().indexOf(questionItem)).getAnswers()
-												.indexOf(answerItem))
-										.setAnswerText(answerText);
-								if (quizCopyRepository.existsById(quizCopyItem.getId())) {
-									quizCopyRepository.save(quizCopyItem);
-								} else {
-									throw new QuizServerException(quizCopyItem, "QuizCopyRepository.save(quizCopyItem)",
-											"Server Error please try again later or contact us");
-								}
-							} else {
-								throw new QuizServerException(quizCopyItem,
-										"QuizCopyRepository.findById(quizItem.getId()).orElse(null)",
-										"Server Error please try again later or contact us");
-							}
 						} else {
 							throw new NotExistsException(null, answerId, "Answer with this id don't exists");
 						}
@@ -227,24 +195,7 @@ public class QuizManagerService {
 						if (quizRepository.existsById(quizItem.getId())) {
 							quizRepository.save(quizItem);
 						} else {
-
-						}
-						quizCopyItem = quizCopyRepository.findById(quizItem.getId()).orElse(null);
-						if (quizCopyItem != null) {
-							// need to check if this works because Quiz question and quizcopy question are
-							// diffrent!!!, if not working possibly need to set all question answers to
-							// false!
-							quizCopyItem.getQuestions().get(quizCopyItem.getQuestions().indexOf(questionItem))
-									.setQuestionText(questionText);
-							if (quizCopyRepository.existsById(quizCopyItem.getId())) {
-								quizCopyRepository.save(quizCopyItem);
-							} else {
-								throw new QuizServerException(quizCopyItem, "QuizCopyRepository.save(quizCopyItem)",
-										"Server Error please try again later or contact us");
-							}
-						} else {
-							throw new QuizServerException(quizCopyItem,
-									"QuizCopyRepository.findById(quizItem.getId()).orElse(null)",
+							throw new QuizServerException(quizCopyItem, "QuizRepository.save(quizItem)",
 									"Server Error please try again later or contact us");
 						}
 					} else {
@@ -278,21 +229,6 @@ public class QuizManagerService {
 							throw new QuizServerException(quizItem, "QuizRepository.existsById(quizItem.getId())",
 									"Server Error please try again later or contact us");
 						}
-						quizCopyItem = quizCopyRepository.findById(quizItem.getId()).orElse(null);
-						if (quizCopyItem != null) {
-							// need to check if it finds the Question object in the quizcopy because the
-							// answers are not the same for quiz Question object and quizcopy Question
-							// object
-							if (quizCopyItem.getQuestions().remove(questionItem)) {
-								if (quizCopyRepository.existsById(quizCopyItem.getId())) {
-									quizCopyRepository.save(quizCopyItem);
-								}
-							}
-						} else {
-							throw new QuizServerException(quizCopyItem,
-									"QuizCopyRepository.existsById(quizItem.getId())",
-									"Server Error please try again later or contact us");
-						}
 					} else {
 						throw new QuizException(questionItem, questionId, QuizExceptionType.NotQuizQuestion,
 								"Question with this id don't belong to this quiz");
@@ -312,7 +248,8 @@ public class QuizManagerService {
 	// need to fix it! removeQuiz is a function for non started quizs only! if the
 	// quiz has started you can not remove it,
 	// also need to transfer the quizinfo and playermongo to the stop method!
-	public void removeQuiz(long quizId, long quizManagerId) throws QuizException, NotExistsException {
+	public void removeQuiz(long quizId, long quizManagerId)
+			throws QuizException, NotExistsException, QuizServerException {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
 		if (quizItem != null) {
@@ -323,9 +260,11 @@ public class QuizManagerService {
 				quizInfoItem = new QuizInfo(0, quizItem.getId(), quizItem.getQuizName(),
 						quizItem.getWinnerPlayer().getId(), quizItem.getWinnerPlayerScore(), playersMongoItem);
 				quizInfoRepository.save(quizInfoItem);
-				quizRepository.deleteById(quizItem.getId());
-				if (quizCopyRepository.existsById(quizItem.getId())) {
-					quizCopyRepository.deleteById(quizItem.getId());
+				if (quizRepository.existsById(quizItem.getId())) {
+					quizRepository.deleteById(quizItem.getId());
+				} else {
+					throw new QuizServerException(quizCopyItem, "QuizRepository.deleteById(quizItem.getId())",
+							"Server Error please try again later or contact us");
 				}
 			} else {
 				throw new QuizException(quizItem, quizManagerId, QuizExceptionType.NotQuizManager,

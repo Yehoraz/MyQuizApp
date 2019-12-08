@@ -48,6 +48,18 @@ public class PlayerController {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
 	}
+	
+	@PostMapping("/suggestQuestion/{playerId}")
+	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
+		try {
+			playerService.suggestQuestion(playerId, question);
+			return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
+		} catch (InvalidInputException e) {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+		} catch (ExistsException e) {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("This question already suggested");
+		}
+	}
 
 	@PostMapping("/answer/{quizId}")
 	public ResponseEntity<?> answerQuiz(@PathVariable long quizId, @RequestBody QuizPlayerAnswers playerAnswers) {
@@ -116,18 +128,6 @@ public class PlayerController {
 			} else {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 			}
-		}
-	}
-
-	@PostMapping("/suggestQuestion/{playerId}")
-	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
-		try {
-			playerService.suggestQuestion(playerId, question);
-			return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
-		} catch (InvalidInputException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
-		} catch (ExistsException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("This question already suggested");
 		}
 	}
 

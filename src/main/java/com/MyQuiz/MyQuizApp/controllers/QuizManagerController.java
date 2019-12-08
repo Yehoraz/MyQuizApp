@@ -30,6 +30,7 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId) {
 		try {
 			quizManagerService.startQuiz(quizId, startTime, quizManagerId);
+			// push notification with QuizCopy need to be sent!
 			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
@@ -69,23 +70,18 @@ public class QuizManagerController {
 		try {
 			quizManagerService.addPlayerToPrivateQuiz(quizId, playerId, quizManagerId);
 			return ResponseEntity.status(HttpStatus.OK).body(null);
-//			return ResponseEntity.status(HttpStatus.OK).body("Player added");
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
 			if (e.getId() == quizId) {
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-//				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 			} else if (e.getId() == playerId) {
 				return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
-//				return ResponseEntity.status(HttpStatus.ACCEPTED).body("Player does not exists");
 			} else {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-//				return ResponseEntity.status(HttpStatus.ACCEPTED).body(serverErrorMessage);
 			}
 		} catch (QuizException e) {
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
-//			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Only the quiz manager can add players");
 		}
 	}
 
@@ -186,6 +182,7 @@ public class QuizManagerController {
 		}
 	}
 
+	//need to check this service method for explanation about what to do with it!
 	@DeleteMapping("/removeQuiz/{quizId}/{quizManagerId}")
 	public ResponseEntity<?> removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
 		try {
@@ -195,6 +192,8 @@ public class QuizManagerController {
 			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+		} catch (QuizServerException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		}
 	}
 

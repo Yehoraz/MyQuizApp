@@ -2,13 +2,6 @@ package com.MyQuiz.MyQuizApp.beans;
 
 import java.util.List;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Enumerated;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-
 import com.MyQuiz.MyQuizApp.enums.QuizType;
 
 import lombok.AllArgsConstructor;
@@ -18,19 +11,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
 public class QuizCopy {
-	
-	@Id
+
 	private long id;
-	
-	@Column
 	private String quizName;
-	
-	@Enumerated
 	private QuizType quizType;
-	
-	@OneToMany(cascade = CascadeType.ALL)
 	private List<Question> questions;
 
 	@Override
@@ -66,7 +51,5 @@ public class QuizCopy {
 		result = prime * result + ((quizType == null) ? 0 : quizType.hashCode());
 		return result;
 	}
-	
-	
 
 }

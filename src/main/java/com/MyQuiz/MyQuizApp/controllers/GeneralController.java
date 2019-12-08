@@ -25,22 +25,6 @@ public class GeneralController {
 	@Autowired
 	private GeneralService generalService;
 
-	private Quiz quiz = null;
-
-	@GetMapping("/getWinner/{quizId}")
-	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
-		quiz = null;
-		try {
-			quiz = generalService.getEndedQuiz(quizId);
-			return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
-					+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
-		} catch (NotExistsException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
-		} catch (QuizException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz not finished yet");
-		}
-	}
-
 	@PostMapping("/addPlayer")
 	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
 		try {
@@ -53,24 +37,35 @@ public class GeneralController {
 		}
 	}
 
-	// need to check what i should return here...
 	@PutMapping("/updatePlayer")
-	public void updatePlayer(@RequestBody Player player) {
+	public ResponseEntity<?> updatePlayer(@RequestBody Player player) {
 		try {
 			generalService.updatePlayer(player);
+			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (NotExistsException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 		} catch (InvalidInputException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 
-	// need to check what i should return here...
 	@DeleteMapping("/deleteExpiredQuizs")
 	public void deleteExpiredQuizs() {
 		generalService.deleteExpiredQuizs();
+	}
+	
+	@GetMapping("/getWinner/{quizId}")
+	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
+		Quiz quiz = null;
+		try {
+			quiz = generalService.getEndedQuiz(quizId);
+			return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
+					+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
+		} catch (NotExistsException e) {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
+		} catch (QuizException e) {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz not finished yet");
+		}
 	}
 
 }

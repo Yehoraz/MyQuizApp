@@ -21,11 +21,9 @@ import com.MyQuiz.MyQuizApp.exceptions.QuizException;
 import com.MyQuiz.MyQuizApp.exceptions.QuizServerException;
 import com.MyQuiz.MyQuizApp.repos.PlayerRepository;
 import com.MyQuiz.MyQuizApp.repos.QuestionRepository;
-import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
 import com.MyQuiz.MyQuizApp.repos.QuizInfoRepository;
 import com.MyQuiz.MyQuizApp.repos.QuizRepository;
 import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
-import com.MyQuiz.MyQuizApp.threads.QuizCopyThread;
 import com.MyQuiz.MyQuizApp.utils.ValidationUtil;
 
 @Service
@@ -33,9 +31,6 @@ public class PlayerService {
 
 	@Autowired
 	private QuizRepository quizRepository;
-
-	@Autowired
-	private QuizCopyRepository quizCopyRepository;
 
 	@Autowired
 	private PlayerRepository playerRepository;
@@ -54,7 +49,6 @@ public class PlayerService {
 	private List<Question> questionsItem = null;
 	private List<Question> randomQuestionsItem = null;
 	private SuggestedQuestion sQuestionItem = null;
-	private Thread quizCopyThreadItem = null;
 	private QuizInfo quizInfoItem = null;
 	private int scoreItem = 0;
 	private List<Quiz> quizsItem = null;
@@ -71,14 +65,7 @@ public class PlayerService {
 					quiz.getQuestions().get(i).setApproved(false);
 				}
 				if (!quizRepository.existsById(quiz.getId())) {
-					quizItem = quizRepository.save(quiz);
-					if (quizItem != null) {
-						quizCopyThreadItem = new Thread(new QuizCopyThread(quiz, quizCopyRepository));
-						quizCopyThreadItem.start();
-					} else {
-						throw new QuizServerException(quiz, "QuizRepository.save(quiz)",
-								"Server Error please try again later or contact us");
-					}
+					quizRepository.save(quiz);
 				} else {
 					throw new QuizServerException(quiz, "QuizRepository.save(quiz)",
 							"Server Error please try again later or contact us");
@@ -308,7 +295,6 @@ public class PlayerService {
 	private void restartVariables() {
 		quizItem = null;
 		playerItem = null;
-		quizCopyThreadItem = null;
 		questionsItem = null;
 		randomQuestionsItem = null;
 		sQuestionItem = null;

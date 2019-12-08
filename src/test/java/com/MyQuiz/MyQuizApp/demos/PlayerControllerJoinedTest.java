@@ -12,17 +12,15 @@ import org.springframework.web.client.RestTemplate;
 
 import com.MyQuiz.MyQuizApp.beans.QuizCopy;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
-import com.MyQuiz.MyQuizApp.services.QuizCopyService;
 
 class PlayerControllerJoinedTest {
 
 	private RestTemplate restTemplate = new RestTemplate();
-	private QuizCopyService quizCopyService = new QuizCopyService();
 
 	@Test
 	public void answerQuizTest() {
 		Map<Long, Long> playerans = new HashMap<Long, Long>();
-		QuizCopy qCopy = quizCopyService.getQuizCopy(507665655715316096l);
+		QuizCopy qCopy = null;
 		System.out.println("copy is: " + qCopy);
 		qCopy.getQuestions().forEach(q -> {
 			playerans.put(q.getId(), q.getAnswers().get(2).getId());

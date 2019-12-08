@@ -26,7 +26,6 @@ import com.MyQuiz.MyQuizApp.beans.QuizCopy;
 import com.MyQuiz.MyQuizApp.beans.QuizPlayerAnswers;
 import com.MyQuiz.MyQuizApp.beans.SuggestedQuestion;
 import com.MyQuiz.MyQuizApp.enums.QuizType;
-import com.MyQuiz.MyQuizApp.repos.QuizCopyRepository;
 import com.MyQuiz.MyQuizApp.repos.QuizRepository;
 import com.MyQuiz.MyQuizApp.repos.SuggestedQuestionRepository;
 
@@ -37,9 +36,6 @@ class PlayerControllerCreateTest {
 
 	@Autowired
 	private SuggestedQuestionRepository sQuestionRepository;
-
-	@Autowired
-	private QuizCopyRepository quizCopyRepository;
 
 	@Autowired
 	private QuizRepository quizRepository;
@@ -114,16 +110,6 @@ class PlayerControllerCreateTest {
 
 		System.out.println(quizRepository.findAll());
 		System.out.println("@@@@@@@@@@@@@@");
-		List<QuizCopy> quizCopies = quizCopyRepository.findAll();
-		System.out.println("################3");
-		System.out.println(quizCopyRepository);
-		System.out.println(quizCopies);
-		System.out.println("##################");
-		QuizCopy quizCopy = quizCopies.get(0);
-		quizCopy.getQuestions().get(0).setQuestionText("fsgsfgsfg");
-		quizCopy.setId(2521526216l);
-		quizCopyRepository.save(quizCopy);
-		System.out.println(quizCopyRepository.findAll());
 		System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 //		ResponseEntity<?> responseEntity = restTemplate.postForEntity(BASE_QUIZ_URL + "/createQuiz", quiz,
 //				String.class);
