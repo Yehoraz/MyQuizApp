@@ -216,5 +216,15 @@ public class QuizManagerController {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
 	}
+	
+	@GetMapping("/getQuiz/{quizManagerId}")
+	public ResponseEntity<?> getQuiz(long quizManagerId){
+		Quiz quiz = quizManagerService.getQuiz(quizManagerId);
+		if(quiz != null) {
+			return ResponseEntity.status(HttpStatus.OK).body(quiz);
+		}else {
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
+		}
+	}
 
 }

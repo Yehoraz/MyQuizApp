@@ -16,6 +16,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long>{
 	
 	public boolean existsByQuizManagerIdAndQuizEndDateAfter(long quizManagerId, Date endDate);
 	
+	public Optional<Quiz> findByQuizManagerId(long quizManagerId);
+	
 	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNull(long quizManagerId);
 	
 	public Optional<Quiz> findByQuizManagerIdAndQuizStartDateIsNotNullAndQuizEndDateAfter(long quizManagerId, Date endDate);

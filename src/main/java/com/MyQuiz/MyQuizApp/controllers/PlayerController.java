@@ -48,7 +48,7 @@ public class PlayerController {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
 	}
-	
+
 	@PostMapping("/suggestQuestion/{playerId}")
 	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
 		try {

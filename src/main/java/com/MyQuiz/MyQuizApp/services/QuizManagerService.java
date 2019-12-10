@@ -213,6 +213,29 @@ public class QuizManagerService {
 			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
+	
+	public void addQuestionToQuiz(long quizManagerId, Question question)
+			throws QuizServerException, NotExistsException, InvalidInputException {
+		restartVariables();
+		if (ValidationUtil.validationCheck(question)) {
+			question.setApproved(false);
+			quizItem = quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
+			if (quizItem != null) {
+				quizItem.getQuestions().add(question);
+				if (quizRepository.existsById(quizItem.getId())) {
+					quizRepository.save(quizItem);
+				} else {
+					throw new QuizServerException(quizItem, "QuizRepository.existsById(quizItem.getId())",
+							"Server Error please try again later or contact us");
+				}
+			} else {
+				throw new NotExistsException(null, quizManagerId,
+						"You do not manage any open quiz or quiz has started");
+			}
+		} else {
+			throw new InvalidInputException(question, 0, "Invalid question input");
+		}
+	}
 
 	public void removeQuestion(long quizId, long questionId, long quizManagerId)
 			throws NotExistsException, QuizException, QuizServerException {
@@ -285,29 +308,12 @@ public class QuizManagerService {
 		restartVariables();
 		return quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
 	}
-
-	public void addQuestionToQuiz(long quizManagerId, Question question)
-			throws QuizServerException, NotExistsException, InvalidInputException {
+	
+	public Quiz getQuiz(long quizManagerId) {
 		restartVariables();
-		if (ValidationUtil.validationCheck(question)) {
-			question.setApproved(false);
-			quizItem = quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
-			if (quizItem != null) {
-				quizItem.getQuestions().add(question);
-				if (quizRepository.existsById(quizItem.getId())) {
-					quizRepository.save(quizItem);
-				} else {
-					throw new QuizServerException(quizItem, "QuizRepository.existsById(quizItem.getId())",
-							"Server Error please try again later or contact us");
-				}
-			} else {
-				throw new NotExistsException(null, quizManagerId,
-						"You do not manage any open quiz or quiz has started");
-			}
-		} else {
-			throw new InvalidInputException(question, 0, "Invalid question input");
-		}
+		return quizRepository.findByQuizManagerId(quizManagerId).orElse(null);
 	}
+
 
 	private void restartVariables() {
 		quizItem = null;

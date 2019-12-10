@@ -55,7 +55,7 @@ public class GeneralService {
 	}
 
 	public Quiz getEndedQuiz(long quizId) throws NotExistsException, QuizException {
-		restartVariables();
+		quizItem = null;
 		quizItem = quizRepository.findById(quizId).orElse(null);
 		if (quizItem != null) {
 			if (quizItem.getQuizEndDate() != null
@@ -70,14 +70,9 @@ public class GeneralService {
 	}
 
 	public void deleteExpiredQuizs() {
-		restartVariables();
+		deleteTimeStampItem = 0;
 		deleteTimeStampItem = (System.currentTimeMillis() - ((1000 * 60 * 60 * 24) * 30));
 		quizRepository.deleteByQuizEndDateBefore(new Date(deleteTimeStampItem));
-	}
-
-	private void restartVariables() {
-		quizItem = null;
-		deleteTimeStampItem = 0;
 	}
 
 }
