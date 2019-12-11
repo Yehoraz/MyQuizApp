@@ -35,37 +35,37 @@ public class PlayerController {
 	private String serverErrorMessage = "Server error please try again later or contact us";
 
 	@PostMapping("/createQuiz")
-	public ResponseEntity<String> createQuiz(@RequestBody Quiz quiz) {
+	public ResponseEntity<?> createQuiz(@RequestBody Quiz quiz) {
+		Quiz quiz2 = null;
 		try {
-			playerService.createQuiz(quiz);
-			return ResponseEntity.status(HttpStatus.OK).body("Quiz Added");
+			quiz2 = playerService.createQuiz(quiz);
 		} catch (QuizServerException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body(serverErrorMessage);
+			return ResponseEntity.status(HttpStatus.CREATED).body(null);
 		} catch (QuizException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED)
-					.body("You can not have more than one Quiz open at the same time");
+			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		} catch (InvalidInputException e) {
-			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
+			return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(quiz2);
 	}
 
 	@PostMapping("/suggestQuestion/{playerId}")
 	public ResponseEntity<?> suggestQuestion(@PathVariable long playerId, @RequestBody Question question) {
 		try {
 			playerService.suggestQuestion(playerId, question);
-			return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
 		} catch (InvalidInputException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		} catch (ExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("This question already suggested");
 		}
+		return ResponseEntity.status(HttpStatus.OK).body("Question suggested");
 	}
 
 	@PostMapping("/answer/{quizId}")
 	public ResponseEntity<?> answerQuiz(@PathVariable long quizId, @RequestBody QuizPlayerAnswers playerAnswers) {
+		int score = 0;
 		try {
-			int score = playerService.answerQuiz(quizId, playerAnswers);
-			return ResponseEntity.status(HttpStatus.OK).body("Thanks your score is: " + score);
+			score = playerService.answerQuiz(quizId, playerAnswers);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(serverErrorMessage);
 		} catch (QuizException e) {
@@ -83,13 +83,13 @@ public class PlayerController {
 		} catch (InvalidInputException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
+		return ResponseEntity.status(HttpStatus.OK).body("Thanks your score is: " + score);
 	}
 
 	@PutMapping("/join/{quizId}/{playerId}")
 	public ResponseEntity<?> joinQuiz(@PathVariable long quizId, @PathVariable long playerId) {
 		try {
 			playerService.joinQuiz(quizId, playerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
@@ -109,13 +109,13 @@ public class PlayerController {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 			}
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/leave/{quizId}/{playerId}")
 	public ResponseEntity<?> leaveQuiz(@PathVariable long quizId, @PathVariable long playerId) {
 		try {
 			playerService.leaveQuiz(quizId, playerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (QuizException e) {
@@ -129,6 +129,7 @@ public class PlayerController {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 			}
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/updateSuggestedQuestion/{playerId}")
@@ -136,7 +137,6 @@ public class PlayerController {
 			@RequestBody SuggestedQuestion suggestedQuestion) {
 		try {
 			playerService.updateSuggestedQuestion(playerId, suggestedQuestion);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (QuizException e) {
@@ -146,46 +146,51 @@ public class PlayerController {
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@GetMapping("/getAllQuestions")
 	public ResponseEntity<?> getAllQuestions() {
+		List<Question> questions = null;
 		try {
-			List<Question> questions = playerService.getAllQuestions();
-			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
+			questions = playerService.getAllQuestions();
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
 	}
 
 	@GetMapping("/getRandomQuestions/{numberOfRandomQuestions}")
 	public ResponseEntity<?> getRandomQuestions(@PathVariable short numberOfRandomQuestions) {
+		List<Question> questions = null;
 		try {
-			List<Question> questions = playerService.getRandomQuestions(numberOfRandomQuestions);
-			return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
+			questions = playerService.getRandomQuestions(numberOfRandomQuestions);
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body((List<Question>) Hibernate.unproxy(questions));
 	}
 
 	@GetMapping("/getQuizInfo/{quizId}")
 	public ResponseEntity<?> getQuizInfo(@PathVariable long quizId) {
+		QuizInfo quizInfo = null;
 		try {
-			QuizInfo quizInfo = playerService.getQuizInfo(quizId);
-			return ResponseEntity.status(HttpStatus.OK).body(quizInfo);
+			quizInfo = playerService.getQuizInfo(quizId);
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(quizInfo);
 	}
 
 	@GetMapping("/getAllPrevQuizs/{playerId}")
 	public ResponseEntity<?> getAllPrevQuizs(@PathVariable long playerId) {
+		List<Quiz> quizs = null;
 		try {
-			List<Quiz> quizs = playerService.getAllPrevQuizs(playerId);
-			return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
+			quizs = playerService.getAllPrevQuizs(playerId);
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body((List<Quiz>) Hibernate.unproxy(quizs));
 	}
 
 }

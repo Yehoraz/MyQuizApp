@@ -29,43 +29,44 @@ public class GeneralController {
 	public ResponseEntity<?> addPlayer(@RequestBody Player player) {
 		try {
 			generalService.addPlayer(player);
-			return ResponseEntity.status(HttpStatus.OK).body("Player added");
 		} catch (ExistsException e1) {
 			return ResponseEntity.status(HttpStatus.CREATED).body("Player id already exists");
 		} catch (InvalidInputException e1) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Invalid input");
 		}
+		return ResponseEntity.status(HttpStatus.OK).body("Player added");
 	}
 
 	@PutMapping("/updatePlayer")
 	public ResponseEntity<?> updatePlayer(@RequestBody Player player) {
 		try {
 			generalService.updatePlayer(player);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
 		} catch (InvalidInputException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@DeleteMapping("/deleteExpiredQuizs")
 	public void deleteExpiredQuizs() {
 		generalService.deleteExpiredQuizs();
 	}
-	
+
 	@GetMapping("/getWinner/{quizId}")
 	public ResponseEntity<?> getQuizWinner(@PathVariable long quizId) {
 		Quiz quiz = null;
 		try {
 			quiz = generalService.getEndedQuiz(quizId);
-			return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
-					+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
+
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz does not exists");
 		} catch (QuizException e) {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body("Quiz not finished yet");
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(quiz.getWinnerPlayer().getFirstName() + " "
+				+ quiz.getWinnerPlayer().getLastName() + " won with score of: " + quiz.getWinnerPlayerScore());
 	}
 
 }

@@ -30,8 +30,6 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId) {
 		try {
 			quizManagerService.startQuiz(quizId, startTime, quizManagerId);
-			// push notification with QuizCopy need to be sent!
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (QuizException e) {
@@ -45,6 +43,8 @@ public class QuizManagerController {
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
+		// push notification with QuizCopy need to be sent!
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/stopQuiz/{quizId}/{endTime}/{quizManagerId}")
@@ -52,7 +52,6 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId) {
 		try {
 			quizManagerService.stopQuiz(quizId, endTime, quizManagerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (InvalidInputException e) {
@@ -62,6 +61,7 @@ public class QuizManagerController {
 		} catch (QuizException e) {
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/addPlayerToQuiz/{quizId}/{playerId}/{quizManagerId}")
@@ -69,7 +69,6 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId) {
 		try {
 			quizManagerService.addPlayerToPrivateQuiz(quizId, playerId, quizManagerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
@@ -83,6 +82,7 @@ public class QuizManagerController {
 		} catch (QuizException e) {
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/updateAnswer/{quizId}/{questionId}/{answerId}/{quizManagerId}")
@@ -90,7 +90,6 @@ public class QuizManagerController {
 			@PathVariable long answerId, @PathVariable long quizManagerId, @RequestBody String answerText) {
 		try {
 			quizManagerService.updateAnswer(quizId, questionId, answerId, quizManagerId, answerText);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
@@ -112,6 +111,7 @@ public class QuizManagerController {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 			}
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/updateQuestion/{quizId}/{questionId}/{quizManagerId}")
@@ -119,7 +119,6 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId, @RequestBody String questionText) {
 		try {
 			quizManagerService.updateQuestion(quizId, questionId, quizManagerId, questionText);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
@@ -139,13 +138,13 @@ public class QuizManagerController {
 				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 			}
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@PutMapping("/addQuestionToQuiz/{quizManagerId}")
 	public ResponseEntity<?> addQuestionToQuiz(@PathVariable long quizManagerId, @RequestBody Question question) {
 		try {
 			quizManagerService.addQuestionToQuiz(quizManagerId, question);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		} catch (NotExistsException e) {
@@ -153,6 +152,7 @@ public class QuizManagerController {
 		} catch (InvalidInputException e) {
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@DeleteMapping("/removeQuestion/{quizId}/{questionId}/{quizManagerId}")
@@ -160,7 +160,6 @@ public class QuizManagerController {
 			@PathVariable long quizManagerId) {
 		try {
 			quizManagerService.removeQuestion(quizId, questionId, quizManagerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (NotExistsException e) {
 			if (e.getId() == quizId) {
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
@@ -180,21 +179,27 @@ public class QuizManagerController {
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
-	//need to check this service method for explanation about what to do with it!
 	@DeleteMapping("/removeQuiz/{quizId}/{quizManagerId}")
 	public ResponseEntity<?> removeQuiz(@PathVariable long quizId, @PathVariable long quizManagerId) {
 		try {
 			quizManagerService.removeQuiz(quizId, quizManagerId);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
 		} catch (QuizException e) {
-			return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
+			if (e.getExceptionType().equals(QuizExceptionType.QuizStarted)) {
+				return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(null);
+			} else if (e.getExceptionType().equals(QuizExceptionType.NotQuizManager)) {
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(null);
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+			}
 		} catch (NotExistsException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		} catch (QuizServerException e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 		}
+		return ResponseEntity.status(HttpStatus.OK).body(null);
 	}
 
 	@GetMapping("/getOnGoingQuiz/{quizManagerId}")
@@ -216,13 +221,13 @@ public class QuizManagerController {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
 	}
-	
+
 	@GetMapping("/getQuiz/{quizManagerId}")
-	public ResponseEntity<?> getQuiz(long quizManagerId){
+	public ResponseEntity<?> getQuiz(long quizManagerId) {
 		Quiz quiz = quizManagerService.getQuiz(quizManagerId);
-		if(quiz != null) {
+		if (quiz != null) {
 			return ResponseEntity.status(HttpStatus.OK).body(quiz);
-		}else {
+		} else {
 			return ResponseEntity.status(HttpStatus.ACCEPTED).body(null);
 		}
 	}

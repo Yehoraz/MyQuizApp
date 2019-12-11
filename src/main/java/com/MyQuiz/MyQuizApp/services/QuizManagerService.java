@@ -88,6 +88,16 @@ public class QuizManagerService {
 			if (quizItem.getQuizManagerId() == quizManagerId) {
 				if (quizItem.getQuizStartDate().getTime() < endTime && quizItem.getQuizEndDate().getTime() > endTime) {
 					quizItem.setQuizEndDate(new Date(endTime));
+
+					// start of stats!!!
+					playersMongoItem = new ArrayList<PlayerMongo>();
+					quizItem.getPlayers().forEach(p -> playersMongoItem
+							.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
+					quizInfoItem = new QuizInfo(0, quizItem.getId(), quizItem.getQuizName(),
+							quizItem.getWinnerPlayer().getId(), quizItem.getWinnerPlayerScore(), playersMongoItem);
+					quizInfoRepository.save(quizInfoItem);
+					// end of stats!!!!
+
 					if (quizRepository.existsById(quizItem.getId())) {
 						quizRepository.save(quizItem);
 					} else {
@@ -213,7 +223,7 @@ public class QuizManagerService {
 			throw new NotExistsException(null, quizId, "Quiz with this id don't exists");
 		}
 	}
-	
+
 	public void addQuestionToQuiz(long quizManagerId, Question question)
 			throws QuizServerException, NotExistsException, InvalidInputException {
 		restartVariables();
@@ -268,26 +278,21 @@ public class QuizManagerService {
 		}
 	}
 
-	// need to fix it! removeQuiz is a function for non started quizs only! if the
-	// quiz has started you can not remove it,
-	// also need to transfer the quizinfo and playermongo to the stop method!
 	public void removeQuiz(long quizId, long quizManagerId)
 			throws QuizException, NotExistsException, QuizServerException {
 		restartVariables();
 		quizItem = quizRepository.findById(quizId).orElse(null);
 		if (quizItem != null) {
 			if (quizItem.getQuizManagerId() == quizManagerId) {
-				playersMongoItem = new ArrayList<PlayerMongo>();
-				quizItem.getPlayers().forEach(p -> playersMongoItem
-						.add(new PlayerMongo(p.getId(), p.getFirstName(), p.getLastName(), p.getAge())));
-				quizInfoItem = new QuizInfo(0, quizItem.getId(), quizItem.getQuizName(),
-						quizItem.getWinnerPlayer().getId(), quizItem.getWinnerPlayerScore(), playersMongoItem);
-				quizInfoRepository.save(quizInfoItem);
-				if (quizRepository.existsById(quizItem.getId())) {
-					quizRepository.deleteById(quizItem.getId());
+				if (quizItem.getQuizStartDate() == null) {
+					if (quizRepository.existsById(quizItem.getId())) {
+						quizRepository.deleteById(quizItem.getId());
+					} else {
+						throw new QuizServerException(quizCopyItem, "QuizRepository.deleteById(quizItem.getId())",
+								"Server Error please try again later or contact us");
+					}
 				} else {
-					throw new QuizServerException(quizCopyItem, "QuizRepository.deleteById(quizItem.getId())",
-							"Server Error please try again later or contact us");
+					throw new QuizException(quizItem, 0, QuizExceptionType.QuizStarted, "Can't remove ongoing quiz");
 				}
 			} else {
 				throw new QuizException(quizItem, quizManagerId, QuizExceptionType.NotQuizManager,
@@ -308,12 +313,11 @@ public class QuizManagerService {
 		restartVariables();
 		return quizRepository.findByQuizManagerIdAndQuizStartDateIsNull(quizManagerId).orElse(null);
 	}
-	
+
 	public Quiz getQuiz(long quizManagerId) {
 		restartVariables();
 		return quizRepository.findByQuizManagerId(quizManagerId).orElse(null);
 	}
-
 
 	private void restartVariables() {
 		quizItem = null;

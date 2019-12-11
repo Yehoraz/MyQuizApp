@@ -53,9 +53,7 @@ public class PlayerService {
 	private int scoreItem = 0;
 	private List<Quiz> quizsItem = null;
 
-	private final int MAX_TIME_PAST_QUIZ_END = 1000 * 10;
-
-	public void createQuiz(Quiz quiz) throws QuizServerException, QuizException, InvalidInputException {
+	public Quiz createQuiz(Quiz quiz) throws QuizServerException, QuizException, InvalidInputException {
 		restartVariables();
 		quiz.setId(createQuizId());
 		if (ValidationUtil.validationCheck(quiz)) {
@@ -65,7 +63,7 @@ public class PlayerService {
 					quiz.getQuestions().get(i).setApproved(false);
 				}
 				if (!quizRepository.existsById(quiz.getId())) {
-					quizRepository.save(quiz);
+					return quizRepository.save(quiz);
 				} else {
 					throw new QuizServerException(quiz, "QuizRepository.save(quiz)",
 							"Server Error please try again later or contact us");
@@ -92,8 +90,8 @@ public class PlayerService {
 					playerAnswers.setCompletionTime(
 							playerAnswers.getCompletionTime() - quizItem.getQuizStartDate().getTime());
 					if (quizItem.getPlayers().contains(playerItem)) {
-						if (quizItem.getQuizEndDate() != null && quizItem.getQuizEndDate()
-								.getTime() > (System.currentTimeMillis() - MAX_TIME_PAST_QUIZ_END)) {
+						if (quizItem.getQuizEndDate() != null
+								&& quizItem.getQuizEndDate().getTime() >= System.currentTimeMillis()) {
 							if (quizItem.getQuizPlayerAnswers().stream()
 									.filter(p -> p.getPlayerId() == playerAnswers.getPlayerId()).count() < 1) {
 								scoreItem = (int) quizItem.getQuestions().stream().filter(
